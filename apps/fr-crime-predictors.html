@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Predicts Crime in France</title>
+<meta name="description" content="Model a French commune's recorded-crime rate across France on switchable predictors (income, poverty, density, youth, immigrant share, population), with each predictor's solo correlation, the national league table, the communes behind the model, and a dossier for your watched French places.">
+<link rel="stylesheet" href="/api/v1/apps-runtime/v1/theme.css">
+<script src="/api/v1/apps-runtime/v1/embabel.js"></script>
+<script src="/api/v1/apps-runtime/gateway.js"></script>
+<script type="application/embabel-app+json">
+{"version":1,"name":"fr-crime-predictors","requires":{"views":["FrModelRows","FrWhatBestPredictsCrime","FrCrimeLeague","FrPlaceDossier","FrCrimeAtMyPlaces"],"realms":["fr-streets"],"namespaces":["view"]}}
+</script>
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #13131a; --border: #1e1e2e; --cyan: #63c0f5; --purple: #9f77cd;
+    --green: #3fd73c; --dim: #6b7280; --text: #e5e7eb; --red: #f2726f; --amber: #e8b04b;
+    --bleu: #4f7cff; --rouge: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.45; }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header h1 .tri { display: inline-block; width: 6px; height: 1.1em; vertical-align: -0.15em; margin-right: 1px; }
+  header p { margin: 0; color: var(--dim); max-width: 760px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin: 20px 0 8px;
+              padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+  .controls label { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--dim); }
+  select, input[type=search] { background: var(--bg); color: var(--text); border: 1px solid var(--border);
+           border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 0.9rem; min-width: 120px; }
+  select#indicator { min-width: 300px; }
+  button { background: var(--cyan); color: #04121c; border: 0; border-radius: 6px; padding: 8px 14px;
+           font-weight: 600; cursor: pointer; font: inherit; font-size: 0.9rem; }
+  button.ghost { background: transparent; color: var(--cyan); border: 1px solid var(--border); }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; margin-top: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } select#indicator { min-width: 0; width: 100%; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
+  .card h2 { margin: 0 0 4px; font-size: 1.05rem; }
+  .card .sub { color: var(--dim); font-size: 0.82rem; margin: 0 0 12px; }
+  .state { color: var(--dim); font-size: 0.88rem; padding: 10px 0; }
+  .state.err { color: var(--red); }
+  .state.busy::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 8px;
+           border: 2px solid var(--cyan); border-right-color: transparent; border-radius: 50%;
+           animation: spin 0.8s linear infinite; vertical-align: -1px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .headline { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 10px; }
+  .stat .v { font-size: 1.7rem; font-weight: 700; color: var(--cyan); }
+  .stat .l { font-size: 0.75rem; color: var(--dim); }
+  .r2bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin: 2px 0 14px; }
+  .r2bar > div { height: 100%; background: linear-gradient(90deg, var(--bleu), var(--cyan)); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th { text-align: left; color: var(--dim); font-weight: 500; font-size: 0.75rem; padding: 6px 6px;
+       border-bottom: 1px solid var(--border); }
+  td { padding: 7px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.off td { color: var(--dim); }
+  .pname { font-weight: 600; } .psub { color: var(--dim); font-size: 0.74rem; }
+  .bar { position: relative; height: 12px; background: var(--bg); border-radius: 3px; min-width: 110px; }
+  .bar .mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--dim); }
+  .bar .fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+  .pos { background: var(--rouge); } .neg { background: var(--bleu); }
+  .tag { font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--dim); white-space: nowrap; }
+  .tag.yes { color: var(--green); border-color: rgba(63,215,60,0.35); }
+  .outliers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  @media (max-width: 560px) { .outliers { grid-template-columns: 1fr; } }
+  .outliers h3 { font-size: 0.82rem; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
+  .outliers li { font-size: 0.84rem; margin-bottom: 4px; }
+  .outliers ul { margin: 0; padding-left: 18px; }
+  .scroll { max-height: 460px; overflow: auto; }
+  .note { font-size: 0.8rem; color: var(--dim); border-left: 2px solid var(--purple); padding: 4px 10px; margin: 12px 0 0; }
+  .full { grid-column: 1 / -1; }
+  a { color: var(--cyan); }
+  .toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toggle input { accent-color: var(--cyan); width: 15px; height: 15px; }
+  footer { margin-top: 28px; text-align: center; font-size: 0.8rem; color: var(--dim); }
+  #how-it-works { display: none; margin-top: 18px; }
+  #how-it-works:target, #how-it-works.open { display: block; }
+  #how-it-works h3 { font-size: 0.95rem; margin: 18px 0 6px; }
+  #how-it-works p, #how-it-works li { font-size: 0.86rem; color: #c8ccd4; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span class="tri" style="background:var(--bleu)"></span><span class="tri" style="background:#fff"></span><span class="tri" style="background:var(--rouge)"></span> What predicts crime in France?</h1>
+    <p>Recorded crime for every French commune whose figure the Ministère de l'Intérieur publishes (SSMSI, 2016–2025), modelled against income, poverty, density, youth, immigrant share and population. Switch predictors on and off and watch what survives. Association across places, never a statement about people.</p>
+  </header>
+
+  <section class="controls" aria-label="Model settings">
+    <label>Indicator (SSMSI label)
+      <select id="indicator"></select>
+    </label>
+    <label>Year
+      <select id="year"></select>
+    </label>
+    <label>Population floor
+      <select id="floor">
+        <option value="5000">over 5,000</option>
+        <option value="10000" selected>over 10,000</option>
+        <option value="20000">over 20,000</option>
+        <option value="50000">over 50,000</option>
+      </select>
+    </label>
+    <button id="go" type="button">Run</button>
+    <span id="elapsed" class="psub"></span>
+  </section>
+
+  <div class="grid">
+    <section class="card" aria-labelledby="m-h">
+      <h2 id="m-h">The model</h2>
+      <p class="sub">Least-squares fit across communes, refitted instantly in your browser as you tick predictors. Standardised betas compare predictors directly.</p>
+      <div id="model-state" class="state busy">Loading every commune in the model (one query, ~20–40 s)…</div>
+      <div id="model" hidden>
+        <div class="headline">
+          <div class="stat"><div class="v" id="r2"></div><div class="l">of the variation explained (R²)</div></div>
+          <div class="stat"><div class="v" id="n"></div><div class="l">communes in the fit</div></div>
+        </div>
+        <div class="r2bar"><div id="r2fill"></div></div>
+        <table>
+          <thead><tr><th>Predictor</th><th class="num">With the others (β)</th><th></th><th class="num">Alone (r)</th><th>Detectable alone?</th></tr></thead>
+          <tbody id="preds"></tbody>
+        </table>
+        <div class="outliers">
+          <div><h3>Most ABOVE prediction</h3><ul id="above"></ul></div>
+          <div><h3>Most BELOW prediction</h3><ul id="below"></ul></div>
+        </div>
+        <p class="note">A predictor that is strong alone but weak beside the others had its apparent effect belonging to a variable it travels with. Red = higher predictor, more recorded crime; blue = less.</p>
+        <p class="psub" style="margin-top:10px"><button id="verify" type="button" class="ghost">Check against the engine</button> <span id="verify-state"></span></p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="l-h">
+      <h2 id="l-h">League table</h2>
+      <p class="sub">Highest published rate first. Suppressed communes are never ranked.</p>
+      <div id="league-state" class="state busy">Loading…</div>
+      <div class="scroll"><table id="league" hidden>
+        <thead><tr><th>#</th><th>Commune</th><th>Dép.</th><th class="num">Rate /1,000</th><th class="num">Count</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section class="card full" aria-labelledby="r-h">
+      <h2 id="r-h">The communes behind the model</h2>
+      <p class="sub">Every commune the fit uses, with each predictor beside it. Find somewhere you know.</p>
+      <input type="search" id="find" placeholder="Filter by commune, INSEE code or département…" aria-label="Filter communes">
+      <div id="ranked-state" class="state busy">Loading…</div>
+      <div class="scroll"><table id="ranked" hidden>
+        <thead><tr><th>Commune</th><th>Dép.</th><th class="num">Crime /1,000</th><th class="num">Median income €</th><th class="num">Poverty %</th><th class="num">Density /km²</th><th class="num">15–24 %</th><th class="num">Immigrant %</th><th class="num">Population</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section class="card full" aria-labelledby="p-h">
+      <h2 id="p-h">My French places</h2>
+      <p class="sub">Your watched places (FrPlace): the dossier, and the selected indicator against 2019, the last pre-COVID year.</p>
+      <div id="places-state" class="state busy">Loading…</div>
+      <div class="scroll"><table id="places" hidden>
+        <thead><tr><th>Place</th><th>INSEE</th><th class="num">Population</th><th class="num">Median income €</th><th class="num">Poverty %</th><th class="num">Immigrant %</th><th>Mayor</th><th class="num">Rate /1,000</th><th class="num">2019</th><th class="num">Change</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+  </div>
+
+  <section id="how-it-works" class="card" aria-labelledby="hiw-h">
+    <h2 id="hiw-h">How it works</h2>
+
+    <h3>1. The data</h3>
+    <ul>
+      <li><b>Recorded crime</b>: SSMSI's communal base (Ministère de l'Intérieur, Licence Ouverte), 15 indicators, 2016–2025, read through data.gouv.fr's tabular API by the <code>fr-streets</code> realm. A commune's figure is published only after more than 5 facts in each of 3 consecutive years. Below that it is suppressed, and this app never shows or ranks it. Rates are per 1,000 residents (burglary: per 1,000 dwellings), counted where the offence was recorded. Cached a week.</li>
+      <li><b>Median standard of living and poverty rate</b>: INSEE Filosofi 2023, all communes in one Melodi call. Poverty is published for about 5,200 communes. Cached a week.</li>
+      <li><b>Age and immigration</b>: INSEE census 2023. "Immigré" means born abroad and not French at birth. France collects no ethnic statistics. Cached a week.</li>
+      <li><b>Density and names</b>: geo.api.gouv.fr (population ÷ surface). Cached a week.</li>
+      <li><b>Your places</b>: the <code>FrPlace</code> entries in your world, with per-place INSEE, crime and mayor (Répertoire national des élus) lookups.</li>
+    </ul>
+
+    <h3>2. The questions</h3>
+    <p>The app calls five saved views by name through <code>gateway.view.run</code>. It contains no Cypher of its own.</p>
+    <ul>
+      <li><code>FrModelRows</code>(indicator, year, minPopulation): the model's design matrix. One row per commune in the fit, with the crime rate and all six predictors unrounded. It loads once per indicator, year and floor. The fit (ordinary least squares on standardised variables), each predictor's solo correlation (Pearson r with a 95% Fisher-z interval; "detectable" means the interval excludes 0), the outliers (the three largest positive and negative residuals) and the communes table are then all computed in this page. That is why ticking a predictor is instant.</li>
+      <li><code>FrWhatBestPredictsCrime</code>(indicator, year, minPopulation, and the six predictor switches): the same fit computed by the engine's <code>regress()</code>. It is called only when you press "Check against the engine", and the page shows whether R² and every beta agree.</li>
+      <li><code>FrCrimeLeague</code>(indicator, year, minPopulation, limit = 25): the highest published rates.</li>
+      <li><code>FrPlaceDossier</code>(): one row per watched place.</li>
+      <li><code>FrCrimeAtMyPlaces</code>(year, baseline = 2019): every indicator at every watched place. The app shows the selected one.</li>
+    </ul>
+    <p>Both model views start the same way. They read one crime "slice" (indicator, year and population floor, sent to data.gouv as its own filters) and the six whole-country covariate tables. They then group everything by INSEE code in one pass, and keep only communes where every predictor is present. That is why the commune set does not change when you switch predictors.</p>
+    <p>The page's fit was checked against <code>regress()</code> for burglary 2025 above 10,000 inhabitants. Over 1,003 communes, R², all six betas, all six named outliers and all six solo correlations with their intervals were identical.</p>
+
+    <h3>3. When it looks wrong</h3>
+    <ul>
+      <li><b>A panel says it failed</b>: a source or the engine did not answer, and that is not the same as "nothing found". The first load of a new indicator, year or floor can take a minute while sources refill. Press Run again.</li>
+      <li><b>"No communes"</b>: nothing passed the filters. Small floors and rare indicators (e.g. <i>Vols avec armes</i>) leave few published communes.</li>
+      <li><b>A low R²</b> is the honest answer. Open data holds economic and structural variables, not the policing, reporting and opportunity factors behind much of the rest.</li>
+      <li><b>Suburbs topping burglary</b> is expected. The rate is per dwelling, and detached-house communes near big cities are recorded as burgled more.</li>
+      <li><b>A place shows no rate</b>: SSMSI suppressed it for that year. The app leaves it empty and never substitutes the département average.</li>
+      <li><b>An arrondissement has no mayor</b>: the élus file lists commune mayors only.</li>
+    </ul>
+
+    <h3>4. What made this possible</h3>
+    <ul>
+      <li>Four public sources are joined on the INSEE code inside one query (<code>FrModelRows</code>). There is no warehouse and no ETL job. The engine's <code>regress()</code> is available on demand as the reference fit, and the page refits locally because six predictors over about 1,000 communes is a millisecond calculation.</li>
+      <li>The crime slice is fetched with the filters the source applies itself: 1,089 of the file's 5.2 million rows for burglary 2025 above 10,000 inhabitants, in 6 pages. It is then cached for a week, as are the covariates.</li>
+    </ul>
+  </section>
+
+  <footer><a href="#how-it-works" id="hiw-link">How it works</a></footer>
+</main>
+
+<script>
+const INDICATORS = [
+  ['Cambriolages de logement', 'Burglary (per 1,000 dwellings)'],
+  ['Violences physiques hors cadre familial', 'Physical violence outside the family'],
+  ['Violences physiques intrafamiliales', 'Domestic physical violence'],
+  ['Violences sexuelles', 'Sexual violence'],
+  ['Vols avec armes', 'Armed robbery'],
+  ['Vols violents sans arme', 'Violent theft without a weapon'],
+  ['Vols sans violence contre des personnes', 'Non-violent theft from persons'],
+  ['Vols de véhicule', 'Vehicle theft'],
+  ['Vols dans les véhicules', 'Theft from vehicles'],
+  ["Vols d'accessoires sur véhicules", 'Theft of vehicle accessories'],
+  ['Destructions et dégradations volontaires', 'Criminal damage'],
+  ['Usage de stupéfiants', 'Drug use'],
+  ['Usage de stupéfiants (AFD)', 'Drug use, on-the-spot fines'],
+  ['Trafic de stupéfiants', 'Drug trafficking'],
+  ['Escroqueries et fraudes aux moyens de paiement', 'Fraud and payment fraud'],
+];
+/* The view's FIXED predictor order — regress names them x1..xn over this list,
+ * filtered by which switches are on. */
+const PREDICTORS = [
+  { key: 'income',      name: 'Median income',   sub: 'Filosofi 2023, € / year' },
+  { key: 'poverty',     name: 'Poverty rate',    sub: '% below 60% of median' },
+  { key: 'density',     name: 'Density',         sub: 'inhabitants per km²' },
+  { key: 'youngAdults', name: 'Young people',    sub: 'share aged 15–24, census 2023' },
+  { key: 'immigrants',  name: 'Immigrant share', sub: 'born abroad, not French at birth' },
+  { key: 'population',  name: 'Population',      sub: 'municipal population' },
+];
+
+const $ = (id) => document.getElementById(id);
+const S = { on: new Set(PREDICTORS.map((p) => p.key)), rows: [], alone: {}, ranked: [], model: null, gen: 0 };
+
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+const fmt = (v, d = 1) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('en-GB', { maximumFractionDigits: d, minimumFractionDigits: d });
+const fmt0 = (v) => fmt(v, 0);
+const geoLink = (code, label) =>
+  `<a href="https://www.insee.fr/fr/statistiques/2011101?geo=COM-${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+
+function setState(id, cls, text) { const el = $(id); el.className = 'state ' + cls; el.textContent = text; el.hidden = false; }
+
+/* Every view call is bounded: a request that never settles ends as a stated failure. */
+async function runView(name, params, ms = 150000) {
+  let timer;
+  const timeout = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('timed out after ' + Math.round(ms / 1000) + ' s')), ms); });
+  try {
+    const res = await Promise.race([gateway.view.run({ name, params }), timeout]);
+    if (!res || typeof res !== 'object') throw new Error('the view returned nothing');
+    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || 'the view failed');
+    const warnings = (res.warnings || []).filter((w) => /PRODUCER_ERROR|INCOMPLETE|FIELDS_WITHHELD/.test(String(w)));
+    if (warnings.length) throw new Error('a source did not answer: ' + String(warnings[0]).slice(0, 160));
+    return res.rows || [];
+  } finally { clearTimeout(timer); }
+}
+
+function sel() {
+  return { indicator: $('indicator').value, year: Number($('year').value), minPopulation: Number($('floor').value) };
+}
+
+/* ── model: loaded once, fitted locally ─────────────────────────────── */
+/* Gauss-Jordan with partial pivoting; k ≤ 6 so this is instant. */
+function solve(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    if (Math.abs(M[c][c]) < 1e-12) return null;
+    for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+  }
+  return M.map((r, i) => r[n] / r[i]);
+}
+const mean = (a) => a.reduce((t, v) => t + v, 0) / a.length;
+const sdev = (a, m) => Math.sqrt(a.reduce((t, v) => t + (v - m) ** 2, 0) / (a.length - 1));
+
+/* OLS on standardised variables: the betas ARE standardised betas, as regress() reports them. */
+function fitOLS(rows, keys) {
+  const n = rows.length, k = keys.length;
+  if (n <= k + 1) return null;
+  const y = rows.map((r) => r.crime), my = mean(y), sy = sdev(y, my);
+  const cols = keys.map((key) => rows.map((r) => r[key]));
+  const mx = cols.map(mean), sx = cols.map((c, j) => sdev(c, mx[j]));
+  const Z = rows.map((_, i) => cols.map((c, j) => (c[i] - mx[j]) / sx[j]));
+  const zy = y.map((v) => (v - my) / sy);
+  const XtX = keys.map((_, u) => keys.map((_, v) => Z.reduce((t, z) => t + z[u] * z[v], 0)));
+  const Xty = keys.map((_, u) => Z.reduce((t, z, i) => t + z[u] * zy[i], 0));
+  const beta = solve(XtX, Xty);
+  if (!beta) return null;
+  const pred = rows.map((_, i) => my + sy * Z[i].reduce((t, z, j) => t + z * beta[j], 0));
+  const ssr = y.reduce((t, v, i) => t + (v - pred[i]) ** 2, 0), sst = y.reduce((t, v) => t + (v - my) ** 2, 0);
+  const r2 = 1 - ssr / sst;
+  const res = rows.map((r, i) => ({ label: r.commune + ' (' + r.insee + ')', actual: y[i], predicted: pred[i], residual: y[i] - pred[i] }))
+    .sort((u, v) => v.residual - u.residual);
+  return { n, r2, beta: Object.fromEntries(keys.map((key, j) => [key, beta[j]])),
+           abovePrediction: res.slice(0, 3).filter((o) => o.residual > 0),
+           belowPrediction: res.slice(-3).reverse().filter((o) => o.residual < 0) };
+}
+
+/* Pearson r with a 95% Fisher-z interval; detectable = the interval excludes 0. */
+function correlate(rows, key) {
+  const x = rows.map((r) => r[key]), y = rows.map((r) => r.crime), n = x.length;
+  const mx = mean(x), my = mean(y);
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; syy += (y[i] - my) ** 2; }
+  const r = sxy / Math.sqrt(sxx * syy);
+  const z = Math.atanh(r), se = 1 / Math.sqrt(n - 3);
+  const ci = [Math.tanh(z - 1.96 * se), Math.tanh(z + 1.96 * se)];
+  return { r, ci, detectable: ci[0] > 0 || ci[1] < 0 };
+}
+
+function fit() {
+  if (!S.rows.length) return;
+  const keys = PREDICTORS.filter((p) => S.on.has(p.key)).map((p) => p.key);
+  const m = fitOLS(S.rows, keys);
+  if (!m) { setState('model-state', 'err', 'These predictors cannot be fitted on this sample (too few communes, or perfectly collinear).'); $('model').hidden = true; return; }
+  renderModel(m);
+  $('verify-state').textContent = '';
+}
+
+async function loadModelRows(gen) {
+  setState('model-state', 'busy', 'Loading every commune in the model (one query, ~20–40 s)…');
+  $('model').hidden = true;
+  setState('ranked-state', 'busy', 'Waiting for the model rows…');
+  $('ranked').hidden = true;
+  try {
+    const rows = await runView('FrModelRows', sel());
+    if (gen !== S.gen) return;
+    S.rows = rows.filter((r) => PREDICTORS.every((p) => typeof r[p.key] === 'number') && typeof r.crime === 'number');
+    if (!S.rows.length) {
+      setState('model-state', '', 'No communes passed the filters for this indicator, year and floor — nothing to fit.');
+      setState('ranked-state', '', 'No communes passed every filter — nothing in the fit.');
+      return;
+    }
+    S.alone = {};
+    for (const p of PREDICTORS) S.alone[p.key] = correlate(S.rows, p.key);
+    S.ranked = S.rows;
+    fit();
+    renderRanked();
+  } catch (e) {
+    if (gen !== S.gen) return;
+    setState('model-state', 'err', 'The commune rows failed to load: ' + e.message + '. Press Run to try again.');
+    setState('ranked-state', 'err', 'The commune table failed to load: ' + e.message);
+  }
+}
+
+function renderModel(m) {
+  S.model = m;
+  $('model-state').hidden = true;
+  $('model').hidden = false;
+  $('r2').textContent = (Math.round((m.r2 || 0) * 1000) / 10) + '%';
+  $('n').textContent = fmt0(m.n);
+  $('r2fill').style.width = Math.max(1, Math.round((m.r2 || 0) * 100)) + '%';
+  const beta = m.beta || {};
+  const maxAbs = Math.max(0.3, ...Object.values(beta).map((b) => Math.abs(b)), ...PREDICTORS.map((p) => Math.abs((S.alone[p.key] || {}).r || 0)));
+  $('preds').innerHTML = PREDICTORS.map((p) => {
+    const on = S.on.has(p.key), b = beta[p.key], a = S.alone[p.key];
+    const w = b == null ? 0 : Math.abs(b) / maxAbs * 50;
+    const bar = b == null ? '' : `<div class="fill ${b >= 0 ? 'pos' : 'neg'}" style="${b >= 0 ? 'left:50%' : 'right:50%'};width:${w.toFixed(1)}%"></div>`;
+    return `<tr class="${on ? '' : 'off'}">
+      <td><label class="toggle"><input type="checkbox" data-key="${escapeHtml(p.key)}" ${on ? 'checked' : ''}>
+        <span><span class="pname">${escapeHtml(p.name)}</span><br><span class="psub">${escapeHtml(p.sub)}</span></span></label></td>
+      <td class="num">${b == null ? '<span class="psub">off</span>' : (b >= 0 ? '+' : '') + fmt(b, 3)}</td>
+      <td><div class="bar"><div class="mid"></div>${bar}</div></td>
+      <td class="num">${a ? (a.r >= 0 ? '+' : '') + fmt(a.r, 3) + '<br><span class="psub">[' + fmt(a.ci[0], 3) + ', ' + fmt(a.ci[1], 3) + ']</span>' : ''}</td>
+      <td>${a ? `<span class="tag ${a.detectable ? 'yes' : ''}">${a.detectable ? 'yes' : 'no'}</span>` : ''}</td>
+    </tr>`;
+  }).join('');
+  const li = (o) => `<li>${escapeHtml(o.label)} — actual ${fmt(o.actual)} vs predicted ${fmt(o.predicted)}</li>`;
+  $('above').innerHTML = (m.abovePrediction || []).map(li).join('') || '<li class="psub">none stands out</li>';
+  $('below').innerHTML = (m.belowPrediction || []).map(li).join('') || '<li class="psub">none stands out</li>';
+}
+
+$('preds').addEventListener('change', (ev) => {
+  const k = ev.target && ev.target.dataset && ev.target.dataset.key;
+  if (!k) return;
+  if (!ev.target.checked && S.on.size === 1) { ev.target.checked = true; return; }   // a model needs one predictor
+  if (ev.target.checked) S.on.add(k); else S.on.delete(k);
+  fit();
+});
+
+/* The engine's own regress() over the same slice and switches, on request only. */
+async function verify() {
+  if (!S.model) return;
+  const myGen = S.gen, onKeys = PREDICTORS.filter((p) => S.on.has(p.key)).map((p) => p.key);
+  const local = S.model;
+  $('verify').disabled = true;
+  $('verify-state').textContent = 'Asking the engine to fit the same model (~20 s)…';
+  try {
+    const params = sel();
+    for (const p of PREDICTORS) params[p.key] = onKeys.includes(p.key);
+    const rows = await runView('FrWhatBestPredictsCrime', params);
+    if (myGen !== S.gen || S.model !== local) { $('verify-state').textContent = ''; return; }
+    const m = rows[0] && rows[0].model;
+    if (!m) { $('verify-state').textContent = 'The engine returned no model for these settings.'; return; }
+    const diffs = [];
+    if (m.n !== local.n) diffs.push(`n ${m.n} vs ${local.n}`);
+    if (Math.abs(m.r2 - local.r2) > 0.0015) diffs.push(`R² ${m.r2} vs ${local.r2.toFixed(3)}`);
+    for (const c of (m.coefficients || [])) {
+      const key = onKeys[Number(String(c.predictor).replace(/^x/, '')) - 1];
+      if (key && Math.abs(c.beta - local.beta[key]) > 0.0015) diffs.push(`${key} β ${c.beta} vs ${local.beta[key].toFixed(3)}`);
+    }
+    $('verify-state').textContent = diffs.length
+      ? 'The engine disagrees: ' + diffs.join('; ')
+      : `Engine agrees: n ${m.n}, R² ${m.r2}, every beta within 0.001.`;
+  } catch (e) {
+    if (myGen === S.gen) $('verify-state').textContent = 'The engine check failed: ' + e.message;
+  } finally { $('verify').disabled = false; }
+}
+
+/* ── league ──────────────────────────────────────────────────────────── */
+async function loadLeague(gen) {
+  setState('league-state', 'busy', 'Loading the league table…');
+  $('league').hidden = true;
+  try {
+    const rows = await runView('FrCrimeLeague', { ...sel(), limit: 25 });
+    if (gen !== S.gen) return;
+    if (!rows.length) { setState('league-state', '', 'No commune above this floor has a published figure for this indicator and year.'); return; }
+    $('league').querySelector('tbody').innerHTML = rows.map((r, i) => `<tr>
+      <td class="num">${i + 1}</td><td>${geoLink(r.insee, r.commune)}</td><td>${escapeHtml(r.departement)}</td>
+      <td class="num">${fmt(r.ratePer1000)}</td><td class="num">${fmt0(r.count)}</td></tr>`).join('');
+    $('league-state').hidden = true; $('league').hidden = false;
+  } catch (e) { if (gen === S.gen) setState('league-state', 'err', 'The league table failed to load: ' + e.message); }
+}
+
+/* ── communes behind the model (the same rows the fit uses) ─────────── */
+function renderRanked() {
+  const q = $('find').value.trim().toLowerCase();
+  const rows = S.ranked.filter((r) => !q || String(r.commune).toLowerCase().includes(q) || String(r.insee).startsWith(q) || String(r.departement).toLowerCase() === q);
+  if (!S.ranked.length) { setState('ranked-state', '', 'No communes passed every filter — nothing in the fit.'); return; }
+  if (!rows.length) { setState('ranked-state', '', 'No commune in the fit matches "' + q + '".'); $('ranked').hidden = true; return; }
+  const shown = rows.slice(0, 300);
+  $('ranked').querySelector('tbody').innerHTML = shown.map((r) => `<tr>
+    <td>${geoLink(r.insee, r.commune)}</td><td>${escapeHtml(r.departement)}</td>
+    <td class="num">${fmt(r.crime)}</td><td class="num">${fmt0(r.income)}</td><td class="num">${fmt(r.poverty)}</td>
+    <td class="num">${fmt0(r.density)}</td><td class="num">${fmt(r.youngAdults)}</td><td class="num">${fmt(r.immigrants)}</td>
+    <td class="num">${fmt0(r.population)}</td></tr>`).join('');
+  setState('ranked-state', '', `${fmt0(rows.length)} commune${rows.length === 1 ? '' : 's'}${rows.length > 300 ? ', first 300 shown — filter to find one' : ''}.`);
+  $('ranked').hidden = false;
+}
+$('find').addEventListener('input', () => renderRanked());
+
+/* ── my places ──────────────────────────────────────────────────────── */
+async function loadPlaces(gen) {
+  setState('places-state', 'busy', 'Loading your French places…');
+  $('places').hidden = true;
+  try {
+    const { indicator, year } = sel();
+    const [dossier, crime] = await Promise.all([
+      runView('FrPlaceDossier', {}),
+      runView('FrCrimeAtMyPlaces', { year, baseline: 2019 }),
+    ]);
+    if (gen !== S.gen) return;
+    if (!dossier.length) { setState('places-state', '', 'You are not watching any French places yet. Ask your assistant to watch one by name (it is stored as an FrPlace).'); return; }
+    const byPlace = {};
+    for (const c of crime) if (c.indicator === indicator) byPlace[c.place] = c;
+    $('places').querySelector('tbody').innerHTML = dossier.map((d) => {
+      const c = byPlace[d.place];
+      const suppressed = c && c.published === 'ndiff';
+      const rate = !c ? '—' : suppressed ? '<span class="psub" title="SSMSI does not publish this figure">not published</span>' : fmt(c.rate);
+      const ch = c && c.changePct != null ? (c.changePct >= 0 ? '+' : '') + fmt(c.changePct) + '%' : '—';
+      return `<tr><td>${escapeHtml(d.place)}</td><td>${geoLink(d.insee, d.insee)}</td>
+        <td class="num">${fmt0(d.population2023)}</td><td class="num">${fmt0(d.medianIncome)}</td><td class="num">${fmt(d.povertyRate)}</td>
+        <td class="num">${fmt(d.immigrantPct)}</td><td>${escapeHtml(d.mayor || '—')}</td>
+        <td class="num">${rate}</td><td class="num">${c ? fmt(c.baselineRate) : '—'}</td><td class="num">${ch}</td></tr>`;
+    }).join('');
+    $('places-state').hidden = true; $('places').hidden = false;
+  } catch (e) { if (gen === S.gen) setState('places-state', 'err', 'Your places failed to load: ' + e.message); }
+}
+
+/* ── wiring ─────────────────────────────────────────────────────────── */
+async function runAll() {
+  const gen = ++S.gen;
+  const t0 = Date.now();
+  $('go').disabled = true;
+  const tick = setInterval(() => { $('elapsed').textContent = Math.round((Date.now() - t0) / 1000) + ' s'; }, 1000);
+  S.rows = []; S.ranked = []; S.alone = {}; S.model = null;
+  $('verify-state').textContent = '';
+  try {
+    await Promise.all([loadModelRows(gen), loadLeague(gen), loadPlaces(gen)]);
+  } finally {
+    clearInterval(tick);
+    if (gen === S.gen) { $('go').disabled = false; $('elapsed').textContent = 'loaded in ' + Math.round((Date.now() - t0) / 1000) + ' s'; }
+  }
+}
+
+(function init() {
+  $('indicator').innerHTML = INDICATORS.map(([v, en]) => `<option value="${escapeHtml(v)}">${escapeHtml(v)} — ${escapeHtml(en)}</option>`).join('');
+  $('year').innerHTML = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016].map((y) => `<option value="${y}">${y}</option>`).join('');
+  $('go').addEventListener('click', () => runAll());
+  $('verify').addEventListener('click', () => verify());
+  $('hiw-link').addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const h = $('how-it-works');
+    h.classList.toggle('open');
+    if (h.classList.contains('open')) h.scrollIntoView({ behavior: 'smooth' });
+  });
+  if (location.hash === '#how-it-works') $('how-it-works').classList.add('open');
+  runAll();
+})();
+</script>
+<div id="embabel-badge" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 0;background:rgba(10,10,15,0.9);border-top:1px solid rgba(99,192,245,0.2);font-size:0.75rem;color:#6b7280;z-index:9999;pointer-events:none;">
+  Created with <a href="https://worlds.embabel.com" target="_blank" rel="noopener noreferrer" style="color:#63c0f5;text-decoration:none;pointer-events:auto;">Embabel Worlds</a>
+</div>
+</body>
+</html>

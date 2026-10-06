@@ -1,0 +1,72 @@
+# The model's raw design matrix: one row per commune, every predictor UNROUNDED,
+# exactly the values FrWhatBestPredictsCrime fits. An app loads it once and
+# refits client-side as predictors are toggled (milliseconds, not a 20 s
+# server regroup per click); FrWhatBestPredictsCrime stays the reference fit.
+- name: FrModelRows
+  description: "The French crime model's design matrix: one row per commune in the fit — INSEE code, name, departement, recorded-crime rate (y) and the six predictors UNROUNDED (median income, poverty rate, density per km2, 15-24 share %, immigrant share %, population) — the exact values FrWhatBestPredictsCrime regresses, for a client that refits as predictors are switched. For display use FrCommunesRanked."
+  params:
+    indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
+    year: { type: int, default: 2025, description: "2016-2025." }
+    minPopulation: { type: int, default: 10000, description: "Population floor." }
+  cypher: |
+    WITH CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+    END AS token
+    MATCH (s:FrCrimeSlice {slice: token + '|' + toString($year) + '|' + toString($minPopulation)})-[:LISTS_CRIME]->(c:FrCrime)
+    WITH c, c.indicator AS indicatorLabel WHERE indicatorLabel = $indicator
+    WITH collect({code: c.code, k: 'crime', v: toFloat(c.ratePer1000)})
+       + collect({code: c.code, k: 'pop', v: toFloat(c.population)})
+       + collect({code: c.code, k: 'count', v: toFloat(c.count)}) AS a
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_MEDIAN_INCOME]->(i:FrIncome)
+    WITH u, a, collect({code: i.code, k: 'income', v: toFloat(i.value)}) AS b
+    WITH u, a + b AS a
+    MATCH (u)-[:HAS_POVERTY]->(pv:FrIncome)
+    WITH u, a, collect({code: pv.code, k: 'poverty', v: toFloat(pv.value)}) AS b
+    WITH u, a + b AS a
+    MATCH (u)-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH u, a, collect({code: g.code, k: 'density', v: toFloat(g.population) / (toFloat(g.surfaceHa) / 100.0)}) AS b1,
+         collect({code: g.code, k: 'name', s: g.name}) AS b2,
+         collect({code: g.code, k: 'dep', s: g.departement}) AS b3
+    WITH u, a + b1 + b2 + b3 AS a
+    MATCH (u)-[:HAS_TOTAL_POP]->(t:FrPopulation)
+    WITH u, a, collect({code: t.code, k: 'total', v: toFloat(t.persons)}) AS b
+    WITH u, a + b AS a
+    MATCH (u)-[:HAS_YOUNG_POP]->(y:FrPopulation)
+    WITH u, a, collect({code: y.code, k: 'young', v: toFloat(y.persons)}) AS b
+    WITH u, a + b AS a
+    MATCH (u)-[:HAS_IMMIGRANTS]->(m:FrImmigration)
+    WITH a, collect({code: m.code, k: 'immi', v: toFloat(m.persons)}) AS b
+    WITH a + b AS a
+    UNWIND a AS r
+    WITH r.code AS code,
+         max(CASE WHEN r.k = 'crime' THEN r.v END) AS crime,
+         max(CASE WHEN r.k = 'count' THEN r.v END) AS count,
+         max(CASE WHEN r.k = 'pop' THEN r.v END) AS population,
+         max(CASE WHEN r.k = 'income' THEN r.v END) AS income,
+         max(CASE WHEN r.k = 'poverty' THEN r.v END) AS poverty,
+         max(CASE WHEN r.k = 'density' THEN r.v END) AS density,
+         max(CASE WHEN r.k = 'total' THEN r.v END) AS total,
+         max(CASE WHEN r.k = 'young' THEN r.v END) AS young,
+         max(CASE WHEN r.k = 'immi' THEN r.v END) AS immi,
+         max(CASE WHEN r.k = 'name' THEN r.s END) AS commune,
+         max(CASE WHEN r.k = 'dep' THEN r.s END) AS departement
+    WITH code, commune, departement, crime, count, population, income, poverty, density,
+         100.0 * young / total AS youngAdults, 100.0 * immi / total AS immigrants
+    WHERE crime IS NOT NULL AND income IS NOT NULL AND poverty IS NOT NULL AND density IS NOT NULL
+      AND youngAdults IS NOT NULL AND immigrants IS NOT NULL AND population IS NOT NULL
+    RETURN code AS insee, commune, departement, crime, count, income, poverty, density, youngAdults, immigrants, population
+    ORDER BY crime DESC

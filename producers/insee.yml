@@ -1,0 +1,106 @@
+# ── INSEE Melodi ─────────────────────────────────────────────────────────────
+# Per place: GEO is the place's melodiGeo ('2025-COM-80021' / '2025-ARM-75118'),
+# one call per place. Nationally: GEO=COM returns every commune in ONE call
+# (~35k observations, 30-70 s cold), so national producers cache a week — a
+# demo must never pay a cold national fetch twice. Melodi echoes GEO with the
+# CURRENT vintage ('2026-COM-80021'); `code` is parsed from it, and `id` is
+# minted from the row's own dimensions so place and national doors converge.
+- name: frIncomeAtPlace
+  kind: remote
+  operation: frFilosofi
+  records: $.observations[*]
+  keyArg: GEO
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {}
+  project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+- name: frMedianIncomeAll
+  kind: remote
+  operation: frFilosofi
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, FILOSOFI_MEASURE: MED_SL, maxResult: '60000'}
+  project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frPovertyAll
+  kind: remote
+  operation: frFilosofi
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, FILOSOFI_MEASURE: PR_MD60, maxResult: '60000'}
+  project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frImmigrationAtPlace
+  kind: remote
+  operation: frImmigration
+  records: $.observations[*]
+  keyArg: GEO
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {SEX: _T, AGE: _T, EMPSTA_ENQ: _T}
+  project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+- name: frImmigrantsAll
+  kind: remote
+  operation: frImmigration
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, IMMI: '1', SEX: _T, AGE: _T, EMPSTA_ENQ: _T, maxResult: '60000'}
+  project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frPopulationAtPlace
+  kind: remote
+  operation: frPopulationAge
+  records: $.observations[*]
+  keyArg: GEO
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {SEX: _T}
+  project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+- name: frPopTotalAll
+  kind: remote
+  operation: frPopulationAge
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, AGE: _T, TIME_PERIOD: '2023', maxResult: '60000'}
+  project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frPopYoungAll
+  kind: remote
+  operation: frPopulationAge
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, AGE: Y15T24, TIME_PERIOD: '2023', maxResult: '60000'}
+  project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800}
+# ── geo.api.gouv.fr — every commune's name, population and surface ──────────
+- name: frCommuneGeoAll
+  kind: remote
+  operation: frCommunes
+  records: $[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {fields: 'code,nom,population,surface,codeDepartement'}
+  project: {code: code, name: nom, departement: codeDepartement, population: population, surfaceHa: surface}
+  cache: {kind: ttl, seconds: 604800}

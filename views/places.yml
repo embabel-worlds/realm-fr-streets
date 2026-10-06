@@ -1,0 +1,65 @@
+# ── Watched places ───────────────────────────────────────────────────────────
+- name: FrPlaceDossier
+  description: "One row per watched French place: INSEE code, census 2023 population and its change since 2012, median standard of living (EUR/yr) and poverty rate (%) from Filosofi 2023, the share aged 15-24, the immigrant share (born abroad, not French at birth — France publishes no ethnic statistics), and the mayor. Arrondissement places have no mayor row (the RNE lists commune mayors only)."
+  cypher: |
+    MATCH (p:FrPlace)
+    OPTIONAL MATCH (p)-[:HAS_INCOME]->(i:FrIncome)
+    WITH p, max(CASE WHEN i.measure = 'MED_SL' THEN i.value END) AS medianIncome,
+            max(CASE WHEN i.measure = 'PR_MD60' THEN i.value END) AS povertyRate
+    OPTIONAL MATCH (p)-[:HAS_IMMIGRATION]->(m:FrImmigration)
+    WITH p, medianIncome, povertyRate,
+         max(CASE WHEN m.status = '1' THEN m.persons END) AS immigrants,
+         max(CASE WHEN m.status = '_T' THEN m.persons END) AS residents
+    OPTIONAL MATCH (p)-[:HAS_POPULATION]->(a:FrPopulation)
+    WITH p, medianIncome, povertyRate, immigrants, residents,
+         max(CASE WHEN a.ageBand = '_T' AND a.year = '2023' THEN a.persons END) AS pop2023,
+         max(CASE WHEN a.ageBand = '_T' AND a.year = '2012' THEN a.persons END) AS pop2012,
+         max(CASE WHEN a.ageBand = 'Y15T24' AND a.year = '2023' THEN a.persons END) AS young
+    OPTIONAL MATCH (p)-[:HAS_MAYOR]->(mr:FrMayor)
+    WITH p, medianIncome, povertyRate, immigrants, residents, pop2023, pop2012, young,
+         head(collect(mr.firstName + ' ' + mr.lastName)) AS mayor
+    RETURN p.name AS place, p.inseeCode AS insee, p.departement AS departement,
+           round(pop2023) AS population2023,
+           CASE WHEN pop2012 > 0 THEN round(1000.0 * (pop2023 - pop2012) / pop2012) / 10 END AS popChangeSince2012Pct,
+           medianIncome, povertyRate,
+           CASE WHEN pop2023 > 0 THEN round(1000.0 * young / pop2023) / 10 END AS youngPct,
+           CASE WHEN residents > 0 THEN round(1000.0 * immigrants / residents) / 10 END AS immigrantPct,
+           mayor
+    ORDER BY place
+
+- name: FrCrimeAtMyPlaces
+  description: "Recorded crime at every watched French place, one row per place and SSMSI indicator: the rate per 1,000 and count in the chosen year, the rate in a baseline year (default 2019, the last pre-COVID year) and the change. When SSMSI SUPPRESSED the place's figure, rate and count are empty, published = 'ndiff', and deptAvgIfSuppressed carries the average of the departement's suppressed communes — context, NOT the place's rate. The 2025 release split and redefined some indicators, so a change across that boundary can be a definition change."
+  params:
+    year: { type: int, default: 2025, description: "Year to report." }
+    baseline: { type: int, default: 2019, description: "Year to compare against." }
+  cypher: |
+    MATCH (p:FrPlace)-[:HAS_CRIME]->(c:FrCrime)
+    WITH p, c.indicator AS indicator,
+         max(CASE WHEN c.year = $year THEN c.ratePer1000 END) AS rate,
+         max(CASE WHEN c.year = $year THEN c.count END) AS count,
+         max(CASE WHEN c.year = $year THEN c.published END) AS published,
+         max(CASE WHEN c.year = $year THEN c.deptAvgRateForSuppressed END) AS deptAvgIfSuppressed,
+         max(CASE WHEN c.year = $baseline THEN c.ratePer1000 END) AS baselineRate
+    RETURN p.name AS place, indicator, rate, count, published, deptAvgIfSuppressed, baselineRate,
+           CASE WHEN baselineRate > 0 AND rate IS NOT NULL THEN round(1000.0 * (rate - baselineRate) / baselineRate) / 10 END AS changePct
+    ORDER BY place, indicator
+
+- name: FrCrimeTrendAtPlace
+  description: "The 2016-2025 series of one SSMSI indicator at a watched place (matched by name, case-insensitive substring): year, count, rate per 1,000, and whether the figure was published. Ten annual points — enough to see a trend, too few for a confident forecast; 2020 is the lockdown year."
+  params:
+    place: { type: string, default: "", description: "Part of the watched place's name; empty = every place." }
+    indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
+  cypher: |
+    MATCH (p:FrPlace)-[:HAS_CRIME]->(c:FrCrime)
+    WHERE toLower(p.name) CONTAINS toLower($place)
+    WITH p, c, c.indicator AS indicator WHERE indicator = $indicator
+    RETURN p.name AS place, indicator, c.year AS year, c.count AS count, c.ratePer1000 AS ratePer1000, c.published AS published
+    ORDER BY place, year
+
+- name: FrDeputiesAtMyPlaces
+  description: "The sitting deputies of each watched place's DEPARTEMENT (Repertoire national des elus) with circonscription — the file has no commune-to-circonscription mapping, so this lists the departement's deputies, not the one for the exact address."
+  cypher: |
+    MATCH (p:FrPlace)-[:HAS_DEPUTIES]->(d:FrDeputy)
+    RETURN p.name AS place, d.circonscription AS circonscription, d.circonscriptionName AS circonscriptionName,
+           d.firstName + ' ' + d.lastName AS deputy, d.mandateStart AS since
+    ORDER BY place, circonscription

@@ -1,0 +1,64 @@
+# ── Property statistics (Etalab 'Statistiques DVF', whole period) ───────────
+# One 30 MB comma-separated file, ~505k rows (464k cadastral sections, 39k
+# communes, 101 departements…), downloaded once per deployment and cached a
+# week. Two keyed readings of the SAME cached file: by code, and by scale.
+- name: frDvfByCode
+  kind: tabular
+  url: "https://data-pipeline-open.s3.sbg.io.cloud.ovh.net/dvf/stats_whole_period.csv"
+  format: csv
+  keyColumn: code_geo
+  keyMatch: exact
+  rowIdAs: id
+  maxRows: 600000
+  maxRowsPerKey: 5
+  project:
+    code: code_geo
+    name: libelle_geo
+    parent: code_parent
+    scale: echelle_geo
+    aptSales: nb_ventes_whole_appartement
+    aptMedianM2: med_prix_m2_whole_appartement
+    aptMeanM2: moy_prix_m2_whole_appartement
+    houseSales: nb_ventes_whole_maison
+    houseMedianM2: med_prix_m2_whole_maison
+    houseMeanM2: moy_prix_m2_whole_maison
+    allSales: nb_ventes_whole_apt_maison
+    allMedianM2: med_prix_m2_whole_apt_maison
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: frDvfByScale
+  kind: tabular
+  url: "https://data-pipeline-open.s3.sbg.io.cloud.ovh.net/dvf/stats_whole_period.csv"
+  format: csv
+  keyColumn: echelle_geo
+  keyMatch: exact
+  rowIdAs: id
+  maxRows: 600000
+  maxRowsPerKey: 45000
+  project:
+    code: code_geo
+    name: libelle_geo
+    parent: code_parent
+    scale: echelle_geo
+    aptSales: nb_ventes_whole_appartement
+    aptMedianM2: med_prix_m2_whole_appartement
+    aptMeanM2: moy_prix_m2_whole_appartement
+    houseSales: nb_ventes_whole_maison
+    houseMedianM2: med_prix_m2_whole_maison
+    houseMeanM2: moy_prix_m2_whole_maison
+    allSales: nb_ventes_whole_apt_maison
+    allMedianM2: med_prix_m2_whole_apt_maison
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+# ── geo.api.gouv.fr, one commune by code ────────────────────────────────────
+- name: frCommuneByCode
+  kind: remote
+  operation: frCommunes
+  records: $[*]
+  keyArg: code
+  maxKeysPerCall: 1
+  args: {fields: 'code,nom,population,surface,codeDepartement,codeRegion,codesPostaux,centre'}
+  project: {code: code, name: nom, departement: codeDepartement, region: codeRegion, population: population, surfaceHa: surface, postcodes: 'codesPostaux[*]', centre: 'centre.coordinates[*]'}
+  cache: {kind: ttl, seconds: 2592000, negativeTtlSeconds: 3600}

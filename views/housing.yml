@@ -1,0 +1,61 @@
+# ── Housing: prices against what people earn ─────────────────────────────────
+# DVF prices (Etalab statistics, last 10 half-years) joined to INSEE Filosofi
+# 2023 on the INSEE code by grouping. "Years for a 70 m2 flat" = median flat
+# price per m2 x 70 / median standard of living — a yardstick of how far local
+# incomes are from local prices, NOT a mortgage calculation: Filosofi's
+# standard of living is per consumption unit (a single person's income; a
+# couple's household counts as 1.5 units).
+
+- name: FrHousingAffordability
+  description: "Property prices against local incomes for every French commune with enough sales: median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts, the median standard of living and poverty rate (Filosofi 2023), and years of the local median standard of living to buy a 70 m2 flat or a 100 m2 house. Communes need at least minSales flat OR house sales and a published income. Excludes Alsace-Moselle and Mayotte (not in DVF); Paris, Lyon and Marseille appear per arrondissement. A median over few sales is noisy, and a median below 300 EUR/m2 is treated as a data artefact (bulk or lot sales) and blanked. A yardstick of the gap between prices and incomes, not a mortgage calculation."
+  params:
+    minSales: { type: int, default: 30, description: "Minimum flat or house sales over the period." }
+  cypher: |
+    MATCH (s:FrHousingScale {scale:'commune'})-[:LISTS_HOUSING]->(h:FrHousing)
+    WITH h, h.aptSales AS aSales, h.houseSales AS hSales
+    WHERE coalesce(aSales, 0) >= $minSales OR coalesce(hSales, 0) >= $minSales
+    WITH collect({code: h.code, k: 'name', s: h.name}) + collect({code: h.code, k: 'apt', v: toFloat(h.aptMedianM2)})
+       + collect({code: h.code, k: 'aptN', v: toFloat(h.aptSales)}) + collect({code: h.code, k: 'house', v: toFloat(h.houseMedianM2)})
+       + collect({code: h.code, k: 'houseN', v: toFloat(h.houseSales)}) AS a
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_MEDIAN_INCOME]->(i:FrIncome)
+    WITH u, a, collect({code: i.code, k: 'income', v: toFloat(i.value)}) AS b
+    WITH u, a + b AS a
+    MATCH (u)-[:HAS_POVERTY]->(pv:FrIncome)
+    WITH a, collect({code: pv.code, k: 'poverty', v: toFloat(pv.value)}) AS b
+    WITH a + b AS a
+    UNWIND a AS r
+    WITH r.code AS code,
+         max(CASE WHEN r.k = 'name' THEN r.s END) AS commune,
+         max(CASE WHEN r.k = 'apt' THEN r.v END) AS flatM2,
+         max(CASE WHEN r.k = 'aptN' THEN r.v END) AS flatSales,
+         max(CASE WHEN r.k = 'house' THEN r.v END) AS houseM2,
+         max(CASE WHEN r.k = 'houseN' THEN r.v END) AS houseSales,
+         max(CASE WHEN r.k = 'income' THEN r.v END) AS income,
+         max(CASE WHEN r.k = 'poverty' THEN r.v END) AS poverty
+    WHERE commune IS NOT NULL AND income > 0 AND (flatM2 IS NOT NULL OR houseM2 IS NOT NULL)
+    RETURN code, commune,
+           CASE WHEN code STARTS WITH '97' THEN substring(code, 0, 3) ELSE substring(code, 0, 2) END AS departement,
+           CASE WHEN flatSales >= $minSales AND flatM2 >= 300 THEN flatM2 END AS flatMedianM2, flatSales,
+           CASE WHEN houseSales >= $minSales AND houseM2 >= 300 THEN houseM2 END AS houseMedianM2, houseSales,
+           income AS medianIncome, poverty AS povertyRate,
+           CASE WHEN flatSales >= $minSales AND flatM2 >= 300 THEN round(10.0 * flatM2 * 70 / income) / 10 END AS yearsFlat70m2,
+           CASE WHEN houseSales >= $minSales AND houseM2 >= 300 THEN round(10.0 * houseM2 * 100 / income) / 10 END AS yearsHouse100m2
+    ORDER BY coalesce(yearsFlat70m2, yearsHouse100m2 * 0.7) DESC
+
+- name: FrDeptHousing
+  description: "Every departement's property prices against its incomes: median price per m2 of flats and houses (DVF) with sales, median standard of living, poverty rate and inequality (Gini, Filosofi 2023), and years of the median standard of living for a 70 m2 flat and a 100 m2 house. Alsace-Moselle (57, 67, 68) appear with incomes but no prices (not in DVF), sorted last; Mayotte is absent."
+  cypher: |
+    MATCH (s:FrHousingScale {scale:'departement'})-[:LISTS_HOUSING]->(h:FrHousing)
+    WITH collect({code: h.code, name: h.name, flat: h.aptMedianM2, flatN: h.aptSales, house: h.houseMedianM2, houseN: h.houseSales}) AS hs
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WITH hs, i, i.measure AS m WHERE m IN ['MED_SL', 'PR_MD60', 'GI_SL']
+    WITH hs, i.code AS code, max(CASE WHEN m = 'MED_SL' THEN i.value END) AS income,
+         max(CASE WHEN m = 'PR_MD60' THEN i.value END) AS poverty, max(CASE WHEN m = 'GI_SL' THEN i.value END) AS gini
+    WITH hs, collect({code: code, income: income, poverty: poverty, gini: gini}) AS inc
+    UNWIND hs AS h
+    WITH h, [x IN inc WHERE x.code = h.code][0] AS f
+    WHERE f IS NOT NULL AND f.income > 0
+    RETURN h.code AS code, h.name AS departement, h.flat AS flatMedianM2, h.flatN AS flatSales,
+           h.house AS houseMedianM2, h.houseN AS houseSales, f.income AS medianIncome, f.poverty AS povertyRate, f.gini AS gini,
+           round(10.0 * h.flat * 70 / f.income) / 10 AS yearsFlat70m2, round(10.0 * h.house * 100 / f.income) / 10 AS yearsHouse100m2
+    ORDER BY coalesce(yearsFlat70m2, -1) DESC

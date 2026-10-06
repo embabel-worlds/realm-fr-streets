@@ -1,0 +1,46 @@
+# ── SSMSI recorded crime, through the data.gouv tabular API ──────────────────
+# The Ministere publishes the communal base only as a 40MB csv.gz / parquet
+# (5.2M rows: commune x year x indicator). data.gouv's tabular API serves the
+# same resource with real filters, so both doors fetch only what they need.
+# `id` = commune:year:indicator, so both doors converge on one node per row.
+# No pushdown: neither door relies on it (see frCrimeSlice).
+
+# Per watched place: every year and indicator, up to 10 places per call.
+- name: frCrimeAtPlaces
+  kind: remote
+  operation: frCrimeRows
+  records: $.data[*]
+  keyTemplate: '{key}'
+  keyJoin: ','
+  maxKeysPerCall: 10
+  args: {CODGEO_2026__in: '{keys}'}
+  paging: {style: page, param: page, sizeParam: page_size, size: 200, maxPages: 10}
+  project: {code: CODGEO_2026, year: annee, indicator: indicateur, unit: unite_de_compte, count: nombre, ratePer1000: taux_pour_mille, published: est_diffuse, deptAvgRateForSuppressed: complement_info_taux,
+    population: insee_pop, dwellings: insee_log}
+  compute: {id: 'r.code + '':'' + toString(r.year) + '':'' + r.indicator'}
+  # An annual release (July, with a spring enrichment). A day is polite.
+  cache: {kind: ttl, seconds: 86400, negativeTtlSeconds: 3600}
+
+# National cross-section, one SLICE per (indicator token, year, population
+# floor): ONE key 'token|year|floor', split by keySplit into the source's own
+# filters by keyArgs — deterministic, never dependent on predicate pushdown
+# (a first version relied on pushdown and paged the whole 5.2M-row file into
+# a timeout). The token is a space-free SUBSTRING of the indicator label,
+# because the engine refuses keys containing whitespace: 13 of the 15 labels
+# have a unique token; 'véhicule' and 'Usage' each match 3 / 2 labels, so
+# views filter the exact label after the fetch. Published rows only, by
+# construction. Measured 2026-10-05: burglary 2025 above 10,000 inhabitants
+# = 1,089 rows, 6 pages, ~2 s a page cold; then a week of cache.
+- name: frCrimeSlice
+  kind: remote
+  operation: frCrimeRows
+  records: $.data[*]
+  keySplit: '|'
+  keyArgs: [indicateur__contains, annee__exact, insee_pop__greater]
+  echoKeyAs: key
+  args: {est_diffuse__exact: diff}
+  paging: {style: page, param: page, sizeParam: page_size, size: 200, maxPages: 100}
+  project: {code: CODGEO_2026, year: annee, indicator: indicateur, unit: unite_de_compte, count: nombre, ratePer1000: taux_pour_mille, published: est_diffuse, deptAvgRateForSuppressed: complement_info_taux,
+    population: insee_pop, dwellings: insee_log}
+  compute: {id: 'r.code + '':'' + toString(r.year) + '':'' + r.indicator'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}

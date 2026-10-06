@@ -1,0 +1,64 @@
+# Which communes moved most between two years — BOTH commune slices named in ONE
+# match (`slice IN [k1, k2]`, one batched fetch; a second anchor keyed on a
+# variable after an aggregation is not seeded), joined on the INSEE code by
+# grouping, never row-to-row. A minimum count in
+# BOTH years keeps "40 -> 326" and drops "2 -> 9": small counts make huge,
+# meaningless percentages.
+- name: FrCrimeMovers
+  description: "Which French communes' recorded crime moved most between two years for one SSMSI indicator — the biggest RISES and the biggest FALLS in rate per 1,000 (burglary: per 1,000 dwellings), among communes above a population floor whose figure is published in BOTH years and that recorded at least minCount facts in both. One row per commune with direction 'rise' or 'fall', from/to rate and count, and the change. Default 2019 (last pre-COVID year) to 2025. Recorded crime: a jump in drug offences usually means a police operation, not a new market; a rise in domestic or sexual violence can be more reporting. Paris/Lyon/Marseille arrondissements are excluded (their cities are included)."
+  params:
+    indicator: { type: string, default: "Trafic de stupéfiants", description: "SSMSI indicator label (the 15 commune labels)." }
+    fromYear: { type: int, default: 2019, description: "Earlier year, 2016-2025." }
+    toYear: { type: int, default: 2025, description: "Later year, 2016-2025." }
+    minPopulation: { type: int, default: 20000, description: "Population floor." }
+    minCount: { type: int, default: 30, description: "Minimum recorded facts in BOTH years." }
+    limit: { type: int, default: 10, description: "How many rises and how many falls." }
+  cypher: |
+    WITH CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+    END AS token
+    WITH token + '|' + toString($fromYear) + '|' + toString($minPopulation) AS k1,
+         token + '|' + toString($toYear) + '|' + toString($minPopulation) AS k2
+    MATCH (s:FrCrimeSlice)-[:LISTS_CRIME]->(c:FrCrime)
+    WHERE s.slice IN [k1, k2]
+    WITH c, c.indicator AS lbl, c.year AS yr WHERE lbl = $indicator
+    WITH collect(CASE WHEN yr = $fromYear THEN {code: c.code, k: 'fromRate', v: toFloat(c.ratePer1000)} END)
+       + collect(CASE WHEN yr = $fromYear THEN {code: c.code, k: 'fromCount', v: toFloat(c.count)} END)
+       + collect(CASE WHEN yr = $toYear THEN {code: c.code, k: 'toRate', v: toFloat(c.ratePer1000)} END)
+       + collect(CASE WHEN yr = $toYear THEN {code: c.code, k: 'toCount', v: toFloat(c.count)} END) AS a
+    UNWIND a AS r
+    WITH r.code AS code,
+         max(CASE WHEN r.k = 'fromRate' THEN r.v END) AS fromRate,
+         max(CASE WHEN r.k = 'fromCount' THEN r.v END) AS fromCount,
+         max(CASE WHEN r.k = 'toRate' THEN r.v END) AS toRate,
+         max(CASE WHEN r.k = 'toCount' THEN r.v END) AS toCount
+    WHERE fromRate > 0 AND toRate IS NOT NULL AND fromCount >= $minCount AND toCount >= $minCount
+      AND NOT code =~ '^(751[0-9][0-9]|132[0-9][0-9]|6938[0-9])$'
+    WITH code, fromRate, fromCount, toRate, toCount, 100.0 * (toRate - fromRate) / fromRate AS changePct
+    ORDER BY changePct DESC
+    WITH collect({code: code, fromRate: fromRate, fromCount: fromCount, toRate: toRate, toCount: toCount, changePct: changePct}) AS ranked
+    WITH [x IN ranked[0..$limit] | x {.*, direction: 'rise'}] + [x IN reverse(ranked)[0..$limit] | x {.*, direction: 'fall'}] AS picks,
+         [x IN ranked[0..$limit] | x.code] + [x IN reverse(ranked)[0..$limit] | x.code] AS codes
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH picks, g, g.code AS gcode WHERE gcode IN codes
+    WITH picks, collect({code: gcode, name: g.name, dep: g.departement}) AS names
+    UNWIND picks AS p
+    WITH p, [x IN names WHERE x.code = p.code][0] AS n
+    RETURN p.direction AS direction, n.name AS commune, p.code AS insee, n.dep AS departement,
+           round(p.fromRate * 100) / 100 AS fromRate, p.fromCount AS fromCount,
+           round(p.toRate * 100) / 100 AS toRate, p.toCount AS toCount, round(p.changePct) AS changePct
+    ORDER BY direction DESC, CASE WHEN p.direction = 'rise' THEN -p.changePct ELSE p.changePct END

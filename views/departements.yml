@@ -1,0 +1,309 @@
+# ── Departement level: complete, nothing suppressed ──────────────────────────
+# Every departement view reads ONE departement crime slice (a space-free word of
+# the indicator label; every departement x every year in one cached fetch) and
+# keeps the exact label. Model views group every door by departement code in
+# one pass, exactly like the commune views.
+
+- name: FrNationalTrend
+  description: "Is recorded crime rising in France? The NATIONAL rate per 1,000 (burglary: per 1,000 dwellings) for one SSMSI indicator, every year 2016-2025, summed over EVERY departement — the complete series, no suppression — with the count and the change against 2019, the last pre-COVID year. Covers Homicides and Tentatives d'homicide too. Recorded crime: a rise can be more reporting (domestic and sexual violence) or more policing (drug use, especially on-the-spot fines from 2020), not only more offences."
+  params:
+    indicator: { type: string, default: "Tentatives d'homicide", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
+  cypher: |
+    WITH CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Usage de stupéfiants (hors AFD)' THEN 'Usage'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+      WHEN 'Homicides' THEN 'Homicides'
+      WHEN "Tentatives d'homicide" THEN 'Tentatives'
+    END AS token
+    MATCH (s:FrDeptCrimeSlice {slice: token})-[:LISTS_DEPT_CRIME]->(c:FrDeptCrime)
+    WITH c, c.indicator AS lbl WHERE lbl = $indicator
+    WITH c.year AS year, sum(c.count) AS facts,
+         sum(CASE WHEN $indicator = 'Cambriolages de logement' THEN c.dwellings ELSE c.population END) AS base,
+         count(c) AS departements
+    WITH year, facts, departements, 1000.0 * facts / base AS ratePer1000
+    ORDER BY year
+    WITH collect({year: year, facts: facts, departements: departements, rate: ratePer1000}) AS series
+    WITH series, [x IN series WHERE x.year = 2019 | x.rate][0] AS base2019
+    UNWIND series AS x
+    RETURN x.year AS year, x.facts AS facts, round(x.rate * 10000) / 10000 AS ratePer1000, x.departements AS departements,
+           CASE WHEN base2019 > 0 THEN round(1000.0 * (x.rate - base2019) / base2019) / 10 END AS changeVs2019Pct
+    ORDER BY year
+
+- name: FrDepartementLeague
+  description: "Departements ranked by a recorded-crime rate for one SSMSI indicator and year — every departement, nothing suppressed, homicides included — with name, rate and count. The complete league the commune base cannot give."
+  params:
+    indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
+    year: { type: int, default: 2025, description: "2016-2025." }
+    limit: { type: int, default: 101, description: "How many departements." }
+  cypher: |
+    WITH CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Usage de stupéfiants (hors AFD)' THEN 'Usage'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+      WHEN 'Homicides' THEN 'Homicides'
+      WHEN "Tentatives d'homicide" THEN 'Tentatives'
+    END AS token
+    MATCH (s:FrDeptCrimeSlice {slice: token})-[:LISTS_DEPT_CRIME]->(c:FrDeptCrime)
+    WITH c, c.indicator AS lbl, c.year AS yr WHERE lbl = $indicator AND yr = $year
+    WITH collect({code: c.departement, rate: c.ratePer1000, count: c.count}) AS rows
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WITH rows, collect({code: n.code, name: n.name}) AS names
+    UNWIND rows AS r
+    WITH r, [x IN names WHERE x.code = r.code | x.name][0] AS departement
+    RETURN r.code AS code, departement, r.rate AS ratePer1000, r.count AS count
+    ORDER BY ratePer1000 DESC LIMIT $limit
+
+- name: FrDepartementRows
+  description: "The departement crime model's design matrix: one row per departement with the recorded-crime rate and every predictor — median standard of living (EUR/yr), poverty rate (%), Gini index, interdecile ratio D9/D1, density (inhabitants/km2), 15-24 share (%), immigrant share (%) and population. Exactly what FrDepartementModel fits, for a reader to check or a client to refit. Metropolitan France and La Reunion (Filosofi's coverage)."
+  params:
+    indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
+    year: { type: int, default: 2025, description: "2016-2025." }
+  cypher: |
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH g.departement AS dep, sum(toFloat(g.surfaceHa)) / 100.0 AS km2, sum(toFloat(g.population)) AS gpop
+    WITH collect({code: dep, k: 'density', v: gpop / km2}) AS a
+    WITH a, CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Usage de stupéfiants (hors AFD)' THEN 'Usage'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+      WHEN 'Homicides' THEN 'Homicides'
+      WHEN "Tentatives d'homicide" THEN 'Tentatives'
+    END AS token
+    MATCH (s:FrDeptCrimeSlice {slice: token})-[:LISTS_DEPT_CRIME]->(c:FrDeptCrime)
+    WITH a, c, c.indicator AS lbl, c.year AS yr WHERE lbl = $indicator AND yr = $year
+    WITH a, collect({code: c.departement, k: 'crime', v: toFloat(c.ratePer1000)}) AS b1,
+         collect({code: c.departement, k: 'count', v: toFloat(c.count)}) AS b2
+    WITH a + b1 + b2 AS a
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WITH d, a, i, i.measure AS m WHERE m IN ['MED_SL', 'PR_MD60', 'GI_SL', 'IR_D9_D1_SL']
+    WITH d, a, collect({code: i.code, k: m, v: toFloat(i.value)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_IMMIGRATION]->(im:FrDeptImmigration)
+    WITH d, a, collect({code: im.code, k: 'immi' + im.status, v: toFloat(im.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_POPULATION]->(p:FrDeptPopulation)
+    WITH d, a, p, p.ageBand AS band WHERE band IN ['_T', 'Y15T24']
+    WITH d, a, collect({code: p.code, k: 'pop' + band, v: toFloat(p.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WITH a, collect({code: n.code, k: 'name', s: n.name}) AS b
+    WITH a + b AS a
+    UNWIND a AS r
+    WITH r.code AS dep,
+         max(CASE WHEN r.k = 'crime' THEN r.v END) AS crime,
+         max(CASE WHEN r.k = 'count' THEN r.v END) AS count,
+         max(CASE WHEN r.k = 'MED_SL' THEN r.v END) AS income,
+         max(CASE WHEN r.k = 'PR_MD60' THEN r.v END) AS poverty,
+         max(CASE WHEN r.k = 'GI_SL' THEN r.v END) AS gini,
+         max(CASE WHEN r.k = 'IR_D9_D1_SL' THEN r.v END) AS d9d1,
+         max(CASE WHEN r.k = 'density' THEN r.v END) AS density,
+         max(CASE WHEN r.k = 'immi1' THEN r.v END) AS immi,
+         max(CASE WHEN r.k = 'immi_T' THEN r.v END) AS residents,
+         max(CASE WHEN r.k = 'popY15T24' THEN r.v END) AS young,
+         max(CASE WHEN r.k = 'pop_T' THEN r.v END) AS pop,
+         max(CASE WHEN r.k = 'name' THEN r.s END) AS departement
+    WITH dep, departement, crime, count, income, poverty, gini, d9d1, density,
+         100.0 * young / pop AS youngAdults, 100.0 * immi / residents AS immigrants, pop
+    WHERE crime IS NOT NULL AND income IS NOT NULL AND poverty IS NOT NULL AND gini IS NOT NULL
+      AND density IS NOT NULL AND youngAdults IS NOT NULL AND immigrants IS NOT NULL
+    RETURN dep AS code, departement, crime AS ratePer1000, count, income, poverty, gini, d9d1,
+           round(density) AS density, round(youngAdults * 10) / 10 AS youngPct, round(immigrants * 10) / 10 AS immigrantPct, pop AS population
+    ORDER BY ratePer1000 DESC
+
+- name: FrDepartementPredictorsOneByOne
+  description: "Each candidate predictor of a departement's recorded-crime rate measured ALONE — median income, poverty, inequality (Gini), log density, the 15-24 share and the immigrant share — with a confidence interval and whether it is detectable. Read beside FrDepartementModel: a variable strong alone and weak there had its apparent effect belonging to the variables it travels with. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
+  params:
+    indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
+    year: { type: int, default: 2025, description: "2016-2025." }
+  cypher: |
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH g.departement AS dep, sum(toFloat(g.surfaceHa)) / 100.0 AS km2, sum(toFloat(g.population)) AS gpop
+    WITH collect({code: dep, k: 'density', v: gpop / km2}) AS a
+    WITH a, CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Usage de stupéfiants (hors AFD)' THEN 'Usage'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+      WHEN 'Homicides' THEN 'Homicides'
+      WHEN "Tentatives d'homicide" THEN 'Tentatives'
+    END AS token
+    MATCH (s:FrDeptCrimeSlice {slice: token})-[:LISTS_DEPT_CRIME]->(c:FrDeptCrime)
+    WITH a, c, c.indicator AS lbl, c.year AS yr WHERE lbl = $indicator AND yr = $year
+    WITH a, collect({code: c.departement, k: 'crime', v: toFloat(c.ratePer1000)}) AS b1,
+         collect({code: c.departement, k: 'count', v: toFloat(c.count)}) AS b2
+    WITH a + b1 + b2 AS a
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WITH d, a, i, i.measure AS m WHERE m IN ['MED_SL', 'PR_MD60', 'GI_SL', 'IR_D9_D1_SL']
+    WITH d, a, collect({code: i.code, k: m, v: toFloat(i.value)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_IMMIGRATION]->(im:FrDeptImmigration)
+    WITH d, a, collect({code: im.code, k: 'immi' + im.status, v: toFloat(im.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_POPULATION]->(p:FrDeptPopulation)
+    WITH d, a, p, p.ageBand AS band WHERE band IN ['_T', 'Y15T24']
+    WITH d, a, collect({code: p.code, k: 'pop' + band, v: toFloat(p.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WITH a, collect({code: n.code, k: 'name', s: n.name}) AS b
+    WITH a + b AS a
+    UNWIND a AS r
+    WITH r.code AS dep,
+         max(CASE WHEN r.k = 'crime' THEN r.v END) AS crime,
+         max(CASE WHEN r.k = 'count' THEN r.v END) AS count,
+         max(CASE WHEN r.k = 'MED_SL' THEN r.v END) AS income,
+         max(CASE WHEN r.k = 'PR_MD60' THEN r.v END) AS poverty,
+         max(CASE WHEN r.k = 'GI_SL' THEN r.v END) AS gini,
+         max(CASE WHEN r.k = 'IR_D9_D1_SL' THEN r.v END) AS d9d1,
+         max(CASE WHEN r.k = 'density' THEN r.v END) AS density,
+         max(CASE WHEN r.k = 'immi1' THEN r.v END) AS immi,
+         max(CASE WHEN r.k = 'immi_T' THEN r.v END) AS residents,
+         max(CASE WHEN r.k = 'popY15T24' THEN r.v END) AS young,
+         max(CASE WHEN r.k = 'pop_T' THEN r.v END) AS pop,
+         max(CASE WHEN r.k = 'name' THEN r.s END) AS departement
+    WITH dep, departement, crime, count, income, poverty, gini, d9d1, density,
+         100.0 * young / pop AS youngAdults, 100.0 * immi / residents AS immigrants, pop
+    WHERE crime IS NOT NULL AND income IS NOT NULL AND poverty IS NOT NULL AND gini IS NOT NULL
+      AND density IS NOT NULL AND youngAdults IS NOT NULL AND immigrants IS NOT NULL
+    RETURN correlate(income, crime) AS incomeVsCrime,
+           correlate(poverty, crime) AS povertyVsCrime,
+           correlate(gini, crime) AS inequalityVsCrime,
+           correlate(log(density), crime) AS densityVsCrime,
+           correlate(youngAdults, crime) AS youngAdultsVsCrime,
+           correlate(immigrants, crime) AS immigrantsVsCrime,
+           count(*) AS departements
+
+# Predictors come back as x1..xn in this FIXED order, switched-off ones dropped:
+# income, poverty, inequality, density (log), youngAdults, immigrants.
+- name: FrDepartementModel
+  description: "What best predicts a departement's recorded-crime rate — a least-squares fit across EVERY departement (no suppression, so no small-commune bias) on whichever predictors are switched on: median standard of living, poverty rate, INEQUALITY (Gini — published for departements only), log density, the 15-24 share and the IMMIGRANT share. Standardized betas, R², and the departements furthest above and below prediction by name. Predictors return as x1..xn in the fixed order income, poverty, inequality, density, youngAdults, immigrants, switched-off ones dropped. For violent theft, drug trafficking, physical violence and attempted homicide (2025) inequality carries the largest beta and the immigrant share's solo correlation mostly does not survive beside it. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
+  params:
+    indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
+    year: { type: int, default: 2025, description: "2016-2025." }
+    income: { type: boolean, default: true, description: "Include median standard of living." }
+    poverty: { type: boolean, default: true, description: "Include poverty rate." }
+    inequality: { type: boolean, default: true, description: "Include the Gini index of standard of living." }
+    density: { type: boolean, default: true, description: "Include log population density." }
+    youngAdults: { type: boolean, default: true, description: "Include the share aged 15-24." }
+    immigrants: { type: boolean, default: true, description: "Include the immigrant share (an area measure, never a statement about immigrants)." }
+  cypher: |
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH g.departement AS dep, sum(toFloat(g.surfaceHa)) / 100.0 AS km2, sum(toFloat(g.population)) AS gpop
+    WITH collect({code: dep, k: 'density', v: gpop / km2}) AS a
+    WITH a, CASE $indicator
+      WHEN 'Cambriolages de logement' THEN 'Cambriolages'
+      WHEN 'Violences physiques intrafamiliales' THEN 'intrafamiliales'
+      WHEN 'Violences physiques hors cadre familial' THEN 'hors'
+      WHEN 'Violences sexuelles' THEN 'sexuelles'
+      WHEN 'Vols avec armes' THEN 'armes'
+      WHEN 'Vols violents sans arme' THEN 'violents'
+      WHEN 'Vols sans violence contre des personnes' THEN 'personnes'
+      WHEN 'Vols de véhicule' THEN 'véhicule'
+      WHEN 'Vols dans les véhicules' THEN 'dans'
+      WHEN "Vols d'accessoires sur véhicules" THEN 'accessoires'
+      WHEN 'Destructions et dégradations volontaires' THEN 'Destructions'
+      WHEN 'Usage de stupéfiants' THEN 'Usage'
+      WHEN 'Usage de stupéfiants (AFD)' THEN 'AFD'
+      WHEN 'Usage de stupéfiants (hors AFD)' THEN 'Usage'
+      WHEN 'Trafic de stupéfiants' THEN 'Trafic'
+      WHEN 'Escroqueries et fraudes aux moyens de paiement' THEN 'Escroqueries'
+      WHEN 'Homicides' THEN 'Homicides'
+      WHEN "Tentatives d'homicide" THEN 'Tentatives'
+    END AS token
+    MATCH (s:FrDeptCrimeSlice {slice: token})-[:LISTS_DEPT_CRIME]->(c:FrDeptCrime)
+    WITH a, c, c.indicator AS lbl, c.year AS yr WHERE lbl = $indicator AND yr = $year
+    WITH a, collect({code: c.departement, k: 'crime', v: toFloat(c.ratePer1000)}) AS b1,
+         collect({code: c.departement, k: 'count', v: toFloat(c.count)}) AS b2
+    WITH a + b1 + b2 AS a
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WITH d, a, i, i.measure AS m WHERE m IN ['MED_SL', 'PR_MD60', 'GI_SL', 'IR_D9_D1_SL']
+    WITH d, a, collect({code: i.code, k: m, v: toFloat(i.value)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_IMMIGRATION]->(im:FrDeptImmigration)
+    WITH d, a, collect({code: im.code, k: 'immi' + im.status, v: toFloat(im.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_POPULATION]->(p:FrDeptPopulation)
+    WITH d, a, p, p.ageBand AS band WHERE band IN ['_T', 'Y15T24']
+    WITH d, a, collect({code: p.code, k: 'pop' + band, v: toFloat(p.persons)}) AS b
+    WITH d, a + b AS a
+    MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WITH a, collect({code: n.code, k: 'name', s: n.name}) AS b
+    WITH a + b AS a
+    UNWIND a AS r
+    WITH r.code AS dep,
+         max(CASE WHEN r.k = 'crime' THEN r.v END) AS crime,
+         max(CASE WHEN r.k = 'count' THEN r.v END) AS count,
+         max(CASE WHEN r.k = 'MED_SL' THEN r.v END) AS income,
+         max(CASE WHEN r.k = 'PR_MD60' THEN r.v END) AS poverty,
+         max(CASE WHEN r.k = 'GI_SL' THEN r.v END) AS gini,
+         max(CASE WHEN r.k = 'IR_D9_D1_SL' THEN r.v END) AS d9d1,
+         max(CASE WHEN r.k = 'density' THEN r.v END) AS density,
+         max(CASE WHEN r.k = 'immi1' THEN r.v END) AS immi,
+         max(CASE WHEN r.k = 'immi_T' THEN r.v END) AS residents,
+         max(CASE WHEN r.k = 'popY15T24' THEN r.v END) AS young,
+         max(CASE WHEN r.k = 'pop_T' THEN r.v END) AS pop,
+         max(CASE WHEN r.k = 'name' THEN r.s END) AS departement
+    WITH dep, departement, crime, count, income, poverty, gini, d9d1, density,
+         100.0 * young / pop AS youngAdults, 100.0 * immi / residents AS immigrants, pop
+    WHERE crime IS NOT NULL AND income IS NOT NULL AND poverty IS NOT NULL AND gini IS NOT NULL
+      AND density IS NOT NULL AND youngAdults IS NOT NULL AND immigrants IS NOT NULL
+    WITH departement + ' (' + dep + ')' AS label, crime, [x IN [
+           CASE WHEN $income      THEN income END,
+           CASE WHEN $poverty     THEN poverty END,
+           CASE WHEN $inequality  THEN gini END,
+           CASE WHEN $density     THEN log(density) END,
+           CASE WHEN $youngAdults THEN youngAdults END,
+           CASE WHEN $immigrants  THEN immigrants END
+         ] WHERE x IS NOT NULL] AS predictors
+    RETURN regress(predictors, crime, label) AS model, count(*) AS departements

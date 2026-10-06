@@ -1,0 +1,101 @@
+# ── Any commune, by INSEE code ───────────────────────────────────────────────
+# Three small views an app calls in parallel for one commune: the snapshot,
+# its recorded crime, and its context (departement and France). Every anchor
+# is pinned from the $code parameter at the top of the query, so each is
+# seeded before anything aggregates.
+
+- name: FrCommuneSnapshot
+  description: "Everything about ONE French commune by INSEE code, in one row: name, departement, postal codes, centre point, municipal population, surface and density; census population 2012 / 2017 / 2023 and its change; age structure 2023 (shares under 15, 15-24, 25-39, 40-54, 55-64, 65-79, 80+); median standard of living and poverty rate (Filosofi 2023); immigrant share (census 2023: born abroad, not French at birth); the mayor (after the March 2026 municipales) with profession and start date; median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts; and years of the local median standard of living needed to buy a 70 m2 flat. Arrondissement codes (751xx, 132xx, 6938x) work for census, income and prices but have no mayor or geography row."
+  params:
+    code: { type: string, default: "64122", description: "INSEE commune code, e.g. '64122' (Biarritz)." }
+  cypher: |
+    MATCH (c:FrCommune {code: $code}),
+          (m:FrMelodiPlace {geo: '2025-' + CASE WHEN $code =~ '^(751[0-9][0-9]|132[0-9][0-9]|6938[0-9])$' THEN 'ARM' ELSE 'COM' END + '-' + $code})
+    OPTIONAL MATCH (c)-[:HAS_INFO]->(i:FrCommuneInfo)
+    WITH c, m, head(collect(i)) AS i
+    OPTIONAL MATCH (c)-[:HAS_HOUSING]->(h:FrHousing)
+    WITH c, m, i, head(collect(h)) AS h
+    OPTIONAL MATCH (c)-[:HAS_MAYOR]->(mr:FrMayor)
+    WITH c, m, i, h, head(collect(mr)) AS mr
+    OPTIONAL MATCH (m)-[:HAS_INCOME]->(inc:FrIncome)
+    WITH c, m, i, h, mr,
+         max(CASE WHEN inc.measure = 'MED_SL' THEN inc.value END) AS medianIncome,
+         max(CASE WHEN inc.measure = 'PR_MD60' THEN inc.value END) AS povertyRate
+    OPTIONAL MATCH (m)-[:HAS_IMMIGRATION]->(im:FrImmigration)
+    WITH c, m, i, h, mr, medianIncome, povertyRate,
+         max(CASE WHEN im.status = '1' THEN im.persons END) AS immigrants,
+         max(CASE WHEN im.status = '_T' THEN im.persons END) AS residents
+    OPTIONAL MATCH (m)-[:HAS_POPULATION]->(p:FrPopulation)
+    WITH c, i, h, mr, medianIncome, povertyRate, immigrants, residents,
+         max(CASE WHEN p.ageBand = '_T' AND p.year = '2012' THEN p.persons END) AS pop2012,
+         max(CASE WHEN p.ageBand = '_T' AND p.year = '2017' THEN p.persons END) AS pop2017,
+         max(CASE WHEN p.ageBand = '_T' AND p.year = '2023' THEN p.persons END) AS pop2023,
+         max(CASE WHEN p.ageBand = 'Y_LT15' AND p.year = '2023' THEN p.persons END) AS a0,
+         max(CASE WHEN p.ageBand = 'Y15T24' AND p.year = '2023' THEN p.persons END) AS a15,
+         max(CASE WHEN p.ageBand = 'Y25T39' AND p.year = '2023' THEN p.persons END) AS a25,
+         max(CASE WHEN p.ageBand = 'Y40T54' AND p.year = '2023' THEN p.persons END) AS a40,
+         max(CASE WHEN p.ageBand = 'Y55T64' AND p.year = '2023' THEN p.persons END) AS a55,
+         max(CASE WHEN p.ageBand = 'Y65T79' AND p.year = '2023' THEN p.persons END) AS a65,
+         max(CASE WHEN p.ageBand = 'Y_GE80' AND p.year = '2023' THEN p.persons END) AS a80
+    RETURN c.code AS code, coalesce(i.name, h.name) AS name, i.departement AS departement, i.region AS region,
+           i.postcodes AS postcodes, i.centre AS centre, i.population AS population, i.surfaceHa AS surfaceHa,
+           CASE WHEN i.surfaceHa > 0 THEN round(i.population / (i.surfaceHa / 100.0)) END AS densityPerKm2,
+           round(pop2012) AS pop2012, round(pop2017) AS pop2017, round(pop2023) AS pop2023,
+           CASE WHEN pop2012 > 0 THEN round(1000.0 * (pop2023 - pop2012) / pop2012) / 10 END AS popChangeSince2012Pct,
+           CASE WHEN pop2023 > 0 THEN [round(1000.0 * a0 / pop2023) / 10, round(1000.0 * a15 / pop2023) / 10, round(1000.0 * a25 / pop2023) / 10,
+                                       round(1000.0 * a40 / pop2023) / 10, round(1000.0 * a55 / pop2023) / 10, round(1000.0 * a65 / pop2023) / 10,
+                                       round(1000.0 * a80 / pop2023) / 10] END AS agePct_0_15_25_40_55_65_80,
+           medianIncome, povertyRate,
+           CASE WHEN residents > 0 THEN round(1000.0 * immigrants / residents) / 10 END AS immigrantPct,
+           CASE WHEN mr IS NOT NULL THEN mr.firstName + ' ' + mr.lastName END AS mayor, mr.sex AS mayorSex,
+           mr.profession AS mayorProfession, mr.functionStart AS mayorSince,
+           h.aptMedianM2 AS flatMedianM2, h.aptSales AS flatSales, h.houseMedianM2 AS houseMedianM2, h.houseSales AS houseSales,
+           CASE WHEN h.aptMedianM2 > 0 AND medianIncome > 0 THEN round(10.0 * h.aptMedianM2 * 70 / medianIncome) / 10 END AS yearsForFlat70m2
+
+- name: FrCommuneCrime
+  description: "Recorded crime in ONE commune by INSEE code: one row per SSMSI indicator with the rate per 1,000 (burglary: per 1,000 dwellings) and count in the chosen year, the baseline year's rate (default 2019, last pre-COVID year) and the change. A suppressed figure (published = 'ndiff') has no rate; deptAvgIfSuppressed is the departement's average for suppressed communes — context, not this commune's rate."
+  params:
+    code: { type: string, default: "64122", description: "INSEE commune code." }
+    year: { type: int, default: 2025, description: "Year to report." }
+    baseline: { type: int, default: 2019, description: "Year to compare against." }
+  cypher: |
+    MATCH (c0:FrCommune {code: $code})-[:HAS_CRIME]->(c:FrCrime)
+    WITH c.indicator AS indicator,
+         max(CASE WHEN c.year = $year THEN c.ratePer1000 END) AS rate,
+         max(CASE WHEN c.year = $year THEN c.count END) AS count,
+         max(CASE WHEN c.year = $year THEN c.published END) AS published,
+         max(CASE WHEN c.year = $year THEN c.deptAvgRateForSuppressed END) AS deptAvgIfSuppressed,
+         max(CASE WHEN c.year = $baseline THEN c.ratePer1000 END) AS baselineRate
+    RETURN indicator, rate, count, published, deptAvgIfSuppressed, baselineRate,
+           CASE WHEN baselineRate > 0 AND rate IS NOT NULL THEN round(1000.0 * (rate - baselineRate) / baselineRate) / 10 END AS changePct
+    ORDER BY indicator
+
+- name: FrCommuneContext
+  description: "The yardsticks for ONE commune by INSEE code: its departement's and France's median standard of living (Filosofi 2023; France = metropolitan) and poverty rate, the departement's inequality (Gini), the departement's and France's median price per m2 of flats and houses (DVF), and the departement's sitting deputies. Read beside FrCommuneSnapshot to say whether a commune is richer, poorer, dearer or cheaper than its surroundings."
+  params:
+    code: { type: string, default: "64122", description: "INSEE commune code." }
+  cypher: |
+    MATCH (d:FrDeptRef {code: CASE WHEN $code STARTS WITH '97' THEN substring($code, 0, 3) ELSE substring($code, 0, 2) END}),
+          (n:FrDeptRef {code: 'nation'}),
+          (fr:FrMelodiPlace {geo: 'FRANCE'})
+    OPTIONAL MATCH (d)-[:HAS_HOUSING]->(dh:FrHousing)
+    WITH d, n, fr, head([x IN collect(dh) WHERE x.scale = 'departement']) AS dh
+    OPTIONAL MATCH (n)-[:HAS_HOUSING]->(nh:FrHousing)
+    WITH d, fr, dh, head(collect(nh)) AS nh
+    OPTIONAL MATCH (d)-[:HAS_DEPUTIES]->(dep:FrDeputy)
+    WITH d, fr, dh, nh, collect(dep.firstName + ' ' + dep.lastName + ' (' + dep.circonscription + ')') AS deputies
+    OPTIONAL MATCH (fr)-[:HAS_INCOME]->(fi:FrIncome)
+    WITH d, dh, nh, deputies,
+         max(CASE WHEN fi.measure = 'MED_SL' THEN fi.value END) AS franceMedianIncome,
+         max(CASE WHEN fi.measure = 'PR_MD60' THEN fi.value END) AS francePovertyRate
+    MATCH (dd:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(di:FrDeptIncome)
+    WITH d, dh, nh, deputies, franceMedianIncome, francePovertyRate, di, di.code AS dcode WHERE dcode = d.code
+    WITH d, dh, nh, deputies, franceMedianIncome, francePovertyRate,
+         max(CASE WHEN di.measure = 'MED_SL' THEN di.value END) AS deptMedianIncome,
+         max(CASE WHEN di.measure = 'PR_MD60' THEN di.value END) AS deptPovertyRate,
+         max(CASE WHEN di.measure = 'GI_SL' THEN di.value END) AS deptGini
+    RETURN d.code AS departement, dh.name AS departementName,
+           deptMedianIncome, deptPovertyRate, deptGini, franceMedianIncome, francePovertyRate,
+           dh.aptMedianM2 AS deptFlatMedianM2, dh.houseMedianM2 AS deptHouseMedianM2,
+           nh.aptMedianM2 AS franceFlatMedianM2, nh.houseMedianM2 AS franceHouseMedianM2,
+           deputies

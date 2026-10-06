@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portrait de ma commune</title>
+<meta name="description" content="Tapez n'importe quelle commune de France et obtenez son portrait en direct : maire élu en 2026, population et âge, revenus et pauvreté, prix de l'immobilier au m² et années de revenu pour se loger, délinquance enregistrée depuis 2019, députés — comparés au département et à la France.">
+<link rel="stylesheet" href="/api/v1/apps-runtime/v1/theme.css">
+<script src="/api/v1/apps-runtime/v1/embabel.js"></script>
+<script src="/api/v1/apps-runtime/gateway.js"></script>
+<script type="application/embabel-app+json">
+{"version":1,"name":"portrait-commune","requires":{"views":["FrCommuneSnapshot","FrCommuneContext","FrCommuneCrime"],"realms":["fr-streets"],"namespaces":["view","frGeo"]}}
+</script>
+<style>
+  :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#181822; --border:#1e1e2e; --cyan:#63c0f5; --purple:#9f77cd;
+          --green:#3fd73c; --dim:#6b7280; --text:#e5e7eb; --red:#f2726f; --bleu:#4f7cff; --rouge:#ef4444; --gold:#e8b04b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.45; }
+  main { max-width:1080px; margin:0 auto; padding:28px 16px 90px; }
+  .flag { display:inline-flex; gap:0; margin-right:10px; vertical-align:-3px; }
+  .flag i { display:block; width:7px; height:22px; } .flag i:nth-child(1){background:var(--bleu)} .flag i:nth-child(2){background:#fff} .flag i:nth-child(3){background:var(--rouge)}
+  h1 { margin:0; font-size:1.9rem; letter-spacing:-0.02em; }
+  .lede { color:var(--dim); margin:6px 0 18px; max-width:720px; }
+  .search { position:relative; max-width:620px; }
+  .search input { width:100%; font:inherit; font-size:1.15rem; padding:14px 16px; border-radius:12px; border:1px solid var(--border);
+                  background:var(--surface); color:var(--text); outline:none; }
+  .search input:focus { border-color:var(--cyan); }
+  .sugg { position:absolute; left:0; right:0; top:100%; margin-top:6px; background:var(--surface2); border:1px solid var(--border);
+          border-radius:12px; overflow:hidden; z-index:20; display:none; }
+  .sugg button { display:flex; justify-content:space-between; width:100%; text-align:left; background:none; border:0; color:var(--text);
+                 padding:10px 14px; font:inherit; cursor:pointer; border-bottom:1px solid var(--border); }
+  .sugg button:hover, .sugg button.active { background:#202030; }
+  .sugg small { color:var(--dim); }
+  .chips { margin:12px 0 0; display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button { background:transparent; border:1px solid var(--border); color:var(--cyan); border-radius:999px; padding:5px 12px; font:inherit; font-size:0.85rem; cursor:pointer; }
+  .chips button:hover { border-color:var(--cyan); }
+  .state { color:var(--dim); padding:14px 0; font-size:0.92rem; }
+  .state.err { color:var(--red); }
+  .state.busy::before { content:''; display:inline-block; width:11px; height:11px; margin-right:8px; border:2px solid var(--cyan);
+                        border-right-color:transparent; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-1px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .hero { margin-top:26px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:end; gap:12px; }
+  .hero h2 { margin:0; font-size:2.4rem; letter-spacing:-0.02em; }
+  .hero .meta { color:var(--dim); }
+  .hero a.share { font-size:0.85rem; color:var(--cyan); }
+  .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; margin-top:16px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; min-width:0; }
+  .c4 { grid-column:span 4; } .c6 { grid-column:span 6; } .c8 { grid-column:span 8; } .c12 { grid-column:span 12; }
+  @media (max-width:860px) { .c4,.c6,.c8 { grid-column:span 12; } .hero h2 { font-size:1.9rem; } }
+  .card h3 { margin:0 0 10px; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--dim); font-weight:600; }
+  .big { font-size:1.9rem; font-weight:700; letter-spacing:-0.01em; }
+  .sub { color:var(--dim); font-size:0.84rem; }
+  .mayor { display:flex; gap:14px; align-items:center; }
+  .mayor .badge { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,var(--bleu),var(--purple)); display:grid; place-items:center;
+                  font-weight:700; font-size:1.2rem; flex:none; }
+  .cmp { display:grid; grid-template-columns:1fr auto; gap:4px 12px; font-size:0.86rem; margin-top:10px; }
+  .cmp .k { color:var(--dim); }
+  .cmp .v { text-align:right; font-variant-numeric:tabular-nums; }
+  .bars { display:flex; flex-direction:column; gap:6px; margin-top:4px; }
+  .bar { display:grid; grid-template-columns:62px 1fr 46px; align-items:center; gap:8px; font-size:0.82rem; }
+  .bar .track { height:12px; background:var(--bg); border-radius:6px; overflow:hidden; }
+  .bar .fill { height:100%; border-radius:6px; background:linear-gradient(90deg,var(--bleu),var(--cyan)); }
+  .bar .v { text-align:right; color:var(--dim); font-variant-numeric:tabular-nums; }
+  .spark { display:flex; align-items:end; gap:14px; height:90px; margin-top:6px; }
+  .spark div { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:end; gap:4px; font-size:0.78rem; color:var(--dim); height:100%; }
+  .spark span.col { width:100%; max-width:56px; background:linear-gradient(180deg,var(--cyan),var(--bleu)); border-radius:6px 6px 2px 2px; }
+  table { width:100%; border-collapse:collapse; font-size:0.86rem; }
+  th { text-align:left; color:var(--dim); font-weight:500; font-size:0.74rem; padding:6px; border-bottom:1px solid var(--border); }
+  td { padding:7px 6px; border-bottom:1px solid var(--border); }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .up { color:var(--red); } .down { color:var(--green); }
+  .pill { font-size:0.72rem; border:1px solid var(--border); border-radius:999px; padding:1px 8px; color:var(--dim); }
+  .years { font-size:3rem; font-weight:800; color:var(--gold); line-height:1; }
+  ul.deps { margin:0; padding-left:18px; columns:2; font-size:0.86rem; }
+  @media (max-width:560px) { ul.deps { columns:1; } }
+  footer { margin-top:30px; text-align:center; font-size:0.82rem; color:var(--dim); }
+  #how-it-works { display:none; margin-top:18px; }
+  #how-it-works.open { display:block; }
+  #how-it-works h3 { text-transform:none; letter-spacing:0; font-size:0.95rem; color:var(--text); margin-top:16px; }
+  #how-it-works p, #how-it-works li { font-size:0.86rem; color:#c8ccd4; }
+  a { color:var(--cyan); }
+</style>
+</head>
+<body>
+<main>
+  <h1><span class="flag"><i></i><i></i><i></i></span>Portrait de ma commune</h1>
+  <p class="lede">Tapez le nom de n'importe quelle commune de France. Maire, habitants, revenus, prix de l'immobilier, délinquance : tout arrive en direct des sources officielles (INSEE, ministère de l'Intérieur, DVF), comparé au département et à la France.</p>
+
+  <div class="search">
+    <input id="q" type="search" autocomplete="off" placeholder="Biarritz, Saint-Malo, Annecy, Roubaix…" aria-label="Rechercher une commune">
+    <div id="sugg" class="sugg" role="listbox"></div>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div id="state" class="state"></div>
+  <section id="portrait" hidden>
+    <div class="hero">
+      <div>
+        <h2 id="p-name"></h2>
+        <div class="meta" id="p-meta"></div>
+      </div>
+      <a class="share" id="p-share" href="#">Lien à partager</a>
+    </div>
+
+    <div class="grid">
+      <div class="card c4">
+        <h3>Le maire</h3>
+        <div class="mayor"><div class="badge" id="m-badge">?</div><div><div class="big" style="font-size:1.25rem" id="m-name"></div><div class="sub" id="m-sub"></div></div></div>
+      </div>
+      <div class="card c4">
+        <h3>Habitants</h3>
+        <div class="big" id="h-pop"></div>
+        <div class="sub" id="h-sub"></div>
+        <div class="spark" id="h-spark"></div>
+      </div>
+      <div class="card c4">
+        <h3>Revenus</h3>
+        <div class="big" id="r-inc"></div>
+        <div class="sub">niveau de vie médian par an (Filosofi 2023)</div>
+        <div class="cmp" id="r-cmp"></div>
+      </div>
+
+      <div class="card c6">
+        <h3>Immobilier</h3>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:end">
+          <div><div class="big" id="i-flat"></div><div class="sub" id="i-flat-sub"></div></div>
+          <div><div class="big" id="i-house"></div><div class="sub" id="i-house-sub"></div></div>
+        </div>
+        <div class="cmp" id="i-cmp"></div>
+      </div>
+      <div class="card c6">
+        <h3>Un 70 m² coûte…</h3>
+        <div style="display:flex;align-items:end;gap:14px"><div class="years" id="y-years"></div><div class="sub" id="y-sub" style="max-width:260px"></div></div>
+        <div class="cmp" id="y-cmp"></div>
+      </div>
+
+      <div class="card c6">
+        <h3>Âge des habitants (2023)</h3>
+        <div class="bars" id="age"></div>
+      </div>
+      <div class="card c6">
+        <h3>Société</h3>
+        <div class="cmp" id="soc"></div>
+      </div>
+
+      <div class="card c12">
+        <h3>Délinquance enregistrée — <span id="c-year">2025</span> par rapport à 2019</h3>
+        <div id="crime-state" class="state busy">Chargement…</div>
+        <table id="crime" hidden><thead><tr><th>Indicateur</th><th class="n">Taux pour 1 000</th><th class="n">Faits</th><th class="n">2019</th><th class="n">Évolution</th></tr></thead><tbody></tbody></table>
+        <p class="sub" style="margin-top:8px">Faits constatés par la police et la gendarmerie, comptés là où ils ont été enregistrés ; cambriolages pour 1 000 logements. « Non publié » : le SSMSI ne diffuse pas les petits volumes (secret statistique) — ce n'est ni zéro, ni la moyenne du département.</p>
+      </div>
+
+      <div class="card c12">
+        <h3>Députés du département</h3>
+        <ul class="deps" id="deps"></ul>
+        <p class="sub" style="margin-top:6px">Tous les députés du département : le répertoire des élus ne relie pas chaque commune à sa circonscription.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="card">
+    <h2 style="margin-top:0">Comment ça marche</h2>
+    <h3>1. Les données</h3>
+    <ul>
+      <li><b>Recherche</b> : geo.api.gouv.fr (<code>gateway.frGeo.frCommunes</code>), communes classées par population.</li>
+      <li><b>Population, âge, immigration</b> : recensements INSEE 2012, 2017 et 2023 (API Melodi). « Immigré » = né étranger à l'étranger ; la France ne collecte pas de statistiques ethniques.</li>
+      <li><b>Revenus</b> : INSEE Filosofi 2023, niveau de vie médian (par unité de consommation) et taux de pauvreté (seuil à 60 %). Absents pour les très petites communes (secret statistique).</li>
+      <li><b>Immobilier</b> : statistiques DVF d'Etalab, prix médian au m² de toutes les ventes notariées des 10 derniers semestres. Hors Alsace-Moselle et Mayotte ; Paris, Lyon et Marseille sont publiés par arrondissement.</li>
+      <li><b>Maire</b> : Répertoire national des élus, mis à jour après les municipales de mars 2026. <b>Députés</b> : même répertoire.</li>
+      <li><b>Délinquance</b> : base communale du SSMSI (ministère de l'Intérieur), 2016–2025.</li>
+      <li>Chaque source est mise en cache une semaine par le monde Embabel ; la première consultation d'une commune peut prendre quelques secondes de plus.</li>
+    </ul>
+    <h3>2. Les questions</h3>
+    <ul>
+      <li><code>FrCommuneSnapshot</code>(code) : l'identité, la population, l'âge, les revenus, l'immigration, le maire, l'immobilier et les années de revenu pour 70 m².</li>
+      <li><code>FrCommuneContext</code>(code) : les repères du département et de la France (revenus, pauvreté, inégalités, prix) et les députés du département.</li>
+      <li><code>FrCommuneCrime</code>(code, year = 2025, baseline = 2019) : chaque indicateur de délinquance, cette année et en 2019.</li>
+    </ul>
+    <p>Les trois vues sont appelées en parallèle par leur nom (<code>gateway.view.run</code>). La page ne contient aucune requête Cypher.</p>
+    <h3>3. Si quelque chose semble faux</h3>
+    <ul>
+      <li>Un tiret « — » : la source ne publie pas ce chiffre pour cette commune (petite commune, Alsace-Moselle pour l'immobilier, arrondissement sans maire). Ce n'est pas zéro.</li>
+      <li>Un message d'erreur : une source n'a pas répondu. Ce n'est pas la même chose qu'une absence de données ; rechargez la commune.</li>
+      <li>« Années de revenu » : prix médian au m² × surface ÷ niveau de vie médian d'une personne (70 m² en appartement ; 100 m² en maison quand la commune n'a pas assez de ventes d'appartements). Un repère de l'écart entre prix et revenus locaux, pas un calcul de crédit.</li>
+    </ul>
+    <h3>4. Ce qui rend cela possible</h3>
+    <ul>
+      <li>Six sources publiques différentes sont reliées par le code INSEE à l'intérieur de la requête qui lit les lignes ; il n'y a ni entrepôt de données ni chargement préalable.</li>
+      <li>Les années de revenu sont calculées à partir de deux producteurs (DVF et Filosofi) au moment de la requête.</li>
+    </ul>
+  </section>
+  <footer><a href="#" id="hiw-link">Comment ça marche</a></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
+const eur = (v) => v == null ? '—' : nf(v) + ' €';
+const pct = (v, d = 1) => v == null ? '—' : nf(v, d) + ' %';
+function setState(el, cls, text) { el.className = 'state ' + cls; el.textContent = text; el.hidden = false; }
+
+async function runView(name, params, ms = 120000) {
+  let t;
+  const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('délai dépassé (' + Math.round(ms / 1000) + ' s)')), ms); });
+  try {
+    const res = await Promise.race([gateway.view.run({ name, params }), timeout]);
+    if (!res || typeof res !== 'object') throw new Error('réponse vide');
+    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || 'la vue a échoué');
+    const bad = (res.warnings || []).filter((w) => /PRODUCER_ERROR|INCOMPLETE/.test(String(w)));
+    if (bad.length) throw new Error('une source n\'a pas répondu : ' + String(bad[0]).slice(0, 140));
+    return res.rows || [];
+  } finally { clearTimeout(t); }
+}
+
+/* ── search ─────────────────────────────────────────────────────────── */
+const CHIPS = [['Biarritz','64122'],['Saint-Malo','35288'],['Annecy','74010'],['Marseille','13055'],['Roubaix','59512'],['Saint-Tropez','83119'],['Saint-Denis','93066'],['Amiens','80021']];
+$('chips').innerHTML = CHIPS.map(([n, c]) => `<button type="button" data-code="${escapeHtml(c)}">${escapeHtml(n)}</button>`).join('');
+$('chips').addEventListener('click', (e) => { const c = e.target.dataset && e.target.dataset.code; if (c) go(c); });
+
+let sTimer = null, sSeq = 0, sItems = [], sActive = -1;
+$('q').addEventListener('input', () => {
+  clearTimeout(sTimer);
+  const q = $('q').value.trim();
+  if (q.length < 2) { $('sugg').style.display = 'none'; return; }
+  sTimer = setTimeout(() => suggest(q), 220);
+});
+async function suggest(q) {
+  const mySeq = ++sSeq;
+  try {
+    const r = await gateway.frGeo.frCommunes({ nom: q, boost: 'population', limit: '8', fields: 'code,nom,population,codeDepartement' });
+    if (mySeq !== sSeq) return;
+    sItems = Array.isArray(r) ? r : [];
+    sActive = -1;
+    $('sugg').innerHTML = sItems.length
+      ? sItems.map((c, i) => `<button type="button" data-i="${i}"><span>${escapeHtml(c.nom)}</span><small>${escapeHtml(c.codeDepartement)} · ${nf(c.population)} hab.</small></button>`).join('')
+      : '<div class="state" style="padding:10px 14px">Aucune commune ne correspond.</div>';
+    $('sugg').style.display = 'block';
+  } catch (e) {
+    if (mySeq === sSeq) { $('sugg').innerHTML = '<div class="state err" style="padding:10px 14px">La recherche a échoué : ' + escapeHtml(e.message) + '</div>'; $('sugg').style.display = 'block'; }
+  }
+}
+$('sugg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) pick(Number(b.dataset.i)); });
+$('q').addEventListener('keydown', (e) => {
+  const btns = [...$('sugg').querySelectorAll('button')];
+  if (e.key === 'ArrowDown' && btns.length) { sActive = Math.min(sActive + 1, btns.length - 1); e.preventDefault(); }
+  else if (e.key === 'ArrowUp' && btns.length) { sActive = Math.max(sActive - 1, 0); e.preventDefault(); }
+  else if (e.key === 'Enter') { if (sItems.length) pick(sActive >= 0 ? sActive : 0); e.preventDefault(); return; }
+  else if (e.key === 'Escape') { $('sugg').style.display = 'none'; return; }
+  btns.forEach((b, i) => b.classList.toggle('active', i === sActive));
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('.search')) $('sugg').style.display = 'none'; });
+function pick(i) { const c = sItems[i]; if (!c) return; $('q').value = c.nom; $('sugg').style.display = 'none'; go(c.code); }
+
+/* ── portrait ───────────────────────────────────────────────────────── */
+let gen = 0;
+function go(code) {
+  if (location.hash !== '#' + code) window.history.replaceState(null, '', '#' + code);
+  load(code);
+}
+async function load(code) {
+  const my = ++gen;
+  setState($('state'), 'busy', 'Je rassemble le portrait (INSEE, DVF, ministère de l\'Intérieur)…');
+  $('portrait').hidden = true;
+  try {
+    const [snap, ctx] = await Promise.all([runView('FrCommuneSnapshot', { code }), runView('FrCommuneContext', { code })]);
+    if (my !== gen) return;
+    const s = snap[0], c = ctx[0] || {};
+    if (!s || (!s.name && s.pop2023 == null)) { setState($('state'), '', 'Aucune donnée publiée pour le code ' + code + '.'); return; }
+    render(s, c);
+    $('state').hidden = true;
+    $('portrait').hidden = false;
+    loadCrime(code, my);
+  } catch (e) {
+    if (my === gen) setState($('state'), 'err', 'Le portrait n\'a pas pu être chargé : ' + e.message + '. Réessayez.');
+  }
+}
+
+function cmpRows(el, rows) {
+  el.innerHTML = rows.filter((r) => r).map(([k, v]) => `<div class="k">${escapeHtml(k)}</div><div class="v">${escapeHtml(v)}</div>`).join('');
+}
+function vsText(a, b) {
+  if (a == null || b == null || !b) return '—';
+  const d = Math.round(100 * (a - b) / b);
+  return (d >= 0 ? '+' : '') + d + ' %';
+}
+
+function render(s, c) {
+  $('p-name').textContent = s.name || ('Commune ' + s.code);
+  const meta = [c.departementName ? c.departementName + ' (' + (s.departement || c.departement) + ')' : null,
+                s.postcodes && s.postcodes.length ? 'CP ' + s.postcodes.join(', ') : null, 'INSEE ' + s.code].filter(Boolean);
+  $('p-meta').textContent = meta.join(' · ');
+  $('p-share').href = '#' + s.code;
+
+  // Mayor
+  if (s.mayor) {
+    const parts = s.mayor.split(' ');
+    $('m-badge').textContent = (parts[0] || '?')[0] + ((parts[1] || '')[0] || '');
+    $('m-name').textContent = s.mayor;
+    const since = s.mayorSince ? new Date(s.mayorSince).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+    $('m-sub').textContent = ['Maire', since ? 'depuis le ' + since : null, s.mayorProfession].filter(Boolean).join(' · ');
+  } else {
+    $('m-badge').textContent = '—'; $('m-name').textContent = 'Non répertorié';
+    $('m-sub').textContent = 'Le répertoire des élus ne liste que les maires de commune (pas d\'arrondissement).';
+  }
+
+  // Population
+  $('h-pop').textContent = nf(s.population ?? s.pop2023);
+  const dens = s.densityPerKm2 != null ? nf(s.densityPerKm2) + ' hab./km²' : null;
+  const ch = s.popChangeSince2012Pct != null ? (s.popChangeSince2012Pct >= 0 ? '+' : '') + nf(s.popChangeSince2012Pct, 1) + ' % depuis 2012' : null;
+  $('h-sub').textContent = [ch, dens].filter(Boolean).join(' · ');
+  const pops = [['2012', s.pop2012], ['2017', s.pop2017], ['2023', s.pop2023]];
+  const pmax = Math.max(...pops.map((p) => p[1] || 0)) || 1, pmin = Math.min(...pops.map((p) => p[1] || pmax));
+  $('h-spark').innerHTML = pops.map(([y, v]) => {
+    const h = v ? 25 + 75 * ((v - pmin * 0.98) / (pmax - pmin * 0.98 || 1)) : 0;
+    return `<div><span>${nf(v)}</span><span class="col" style="height:${Math.max(4, h).toFixed(0)}%"></span><span>${y}</span></div>`;
+  }).join('');
+
+  // Income
+  $('r-inc').textContent = eur(s.medianIncome);
+  cmpRows($('r-cmp'), [
+    ['Département', eur(c.deptMedianIncome) + '  (' + vsText(s.medianIncome, c.deptMedianIncome) + ')'],
+    ['France métropolitaine', eur(c.franceMedianIncome) + '  (' + vsText(s.medianIncome, c.franceMedianIncome) + ')'],
+    ['Taux de pauvreté', pct(s.povertyRate) + ' — dép. ' + pct(c.deptPovertyRate) + ', France ' + pct(c.francePovertyRate)],
+  ]);
+
+  // Housing
+  $('i-flat').textContent = s.flatMedianM2 ? nf(s.flatMedianM2) + ' €/m²' : '—';
+  $('i-flat-sub').textContent = s.flatMedianM2 ? 'appartements · ' + nf(s.flatSales) + ' ventes' : 'appartements';
+  $('i-house').textContent = s.houseMedianM2 ? nf(s.houseMedianM2) + ' €/m²' : '—';
+  $('i-house-sub').textContent = s.houseMedianM2 ? 'maisons · ' + nf(s.houseSales) + ' ventes' : 'maisons';
+  cmpRows($('i-cmp'), [
+    ['Appartements — département / France', nf(c.deptFlatMedianM2) + ' / ' + nf(c.franceFlatMedianM2) + ' €/m²'],
+    ['Maisons — département / France', nf(c.deptHouseMedianM2) + ' / ' + nf(c.franceHouseMedianM2) + ' €/m²'],
+    !s.flatMedianM2 && !s.houseMedianM2 ? ['Note', s.code === '75056' || s.code === '69123' || s.code === '13055' ? 'publié par arrondissement' : 'pas de prix publié (Alsace-Moselle, Mayotte ou trop peu de ventes)'] : null,
+  ]);
+
+  // Years — flats when the commune has flat sales; otherwise a 100 m² house, so a village still gets an answer.
+  const useHouse = s.yearsForFlat70m2 == null && s.houseMedianM2 && s.medianIncome;
+  const years = useHouse ? s.houseMedianM2 * 100 / s.medianIncome : s.yearsForFlat70m2;
+  document.querySelector('#y-years').closest('.card').querySelector('h3').textContent = useHouse ? 'Une maison de 100 m² coûte…' : 'Un 70 m² coûte…';
+  $('y-years').textContent = years != null ? nf(years, 1) : '—';
+  $('y-sub').textContent = years != null
+    ? (useHouse ? 'années de niveau de vie médian local pour une maison de 100 m² (pas assez de ventes d\'appartements)' : 'années de niveau de vie médian local pour un appartement de 70 m²')
+    : 'pas assez de données pour ce calcul';
+  const dYears = useHouse ? (c.deptHouseMedianM2 && c.deptMedianIncome ? c.deptHouseMedianM2 * 100 / c.deptMedianIncome : null)
+                          : (c.deptFlatMedianM2 && c.deptMedianIncome ? c.deptFlatMedianM2 * 70 / c.deptMedianIncome : null);
+  const fYears = useHouse ? (c.franceHouseMedianM2 && c.franceMedianIncome ? c.franceHouseMedianM2 * 100 / c.franceMedianIncome : null)
+                          : (c.franceFlatMedianM2 && c.franceMedianIncome ? c.franceFlatMedianM2 * 70 / c.franceMedianIncome : null);
+  cmpRows($('y-cmp'), [['Département', dYears ? nf(dYears, 1) + ' ans' : '—'], ['France', fYears ? nf(fYears, 1) + ' ans' : '—']]);
+
+  // Age
+  const labels = ['0–14', '15–24', '25–39', '40–54', '55–64', '65–79', '80 +'];
+  const ages = s.agePct_0_15_25_40_55_65_80 || [];
+  const amax = Math.max(...ages.filter((x) => x != null), 1);
+  $('age').innerHTML = ages.length ? labels.map((l, i) => `<div class="bar"><span>${l}</span><div class="track"><div class="fill" style="width:${(100 * (ages[i] || 0) / amax).toFixed(0)}%"></div></div><span class="v">${pct(ages[i])}</span></div>`).join('')
+    : '<div class="state">Pas de structure par âge publiée.</div>';
+
+  // Society
+  const old = ages.length ? (ages[5] || 0) + (ages[6] || 0) : null;
+  cmpRows($('soc'), [
+    ['Densité', dens || '—'],
+    ['65 ans et plus', old != null ? pct(old) : '—'],
+    ['Moins de 25 ans', ages.length ? pct((ages[0] || 0) + (ages[1] || 0)) : '—'],
+    ['Immigrés (nés étrangers à l\'étranger)', pct(s.immigrantPct)],
+    ['Inégalités du département (Gini)', c.deptGini != null ? nf(c.deptGini, 3) : '—'],
+    ['Surface', s.surfaceHa != null ? nf(s.surfaceHa / 100, 1) + ' km²' : '—'],
+  ]);
+
+  // Deputies
+  const deps = c.deputies || [];
+  $('deps').innerHTML = deps.length ? deps.slice().sort().map((d) => `<li>${escapeHtml(d)}</li>`).join('') : '<li>—</li>';
+}
+
+async function loadCrime(code, my) {
+  setState($('crime-state'), 'busy', 'Chargement de la délinquance…');
+  $('crime').hidden = true;
+  try {
+    const rows = await runView('FrCommuneCrime', { code, year: 2025, baseline: 2019 });
+    if (my !== gen) return;
+    if (!rows.length) { setState($('crime-state'), '', 'Le SSMSI ne publie aucun indicateur pour cette commune.'); return; }
+    $('crime').querySelector('tbody').innerHTML = rows.map((r) => {
+      const supp = r.published === 'ndiff';
+      const chg = r.changePct;
+      const cls = chg == null ? '' : chg > 0 ? 'up' : 'down';
+      return `<tr><td>${escapeHtml(r.indicator)}</td>
+        <td class="n">${supp ? '<span class="pill">non publié</span>' : nf(r.rate, 2)}</td>
+        <td class="n">${supp ? '—' : nf(r.count)}</td>
+        <td class="n">${nf(r.baselineRate, 2)}</td>
+        <td class="n ${cls}">${chg == null ? '—' : (chg > 0 ? '+' : '') + nf(chg, 0) + ' %'}</td></tr>`;
+    }).join('');
+    $('crime-state').hidden = true; $('crime').hidden = false;
+  } catch (e) { if (my === gen) setState($('crime-state'), 'err', 'La délinquance n\'a pas pu être chargée : ' + e.message); }
+}
+
+$('hiw-link').addEventListener('click', (e) => { e.preventDefault(); const h = $('how-it-works'); h.classList.toggle('open'); if (h.classList.contains('open')) h.scrollIntoView({ behavior: 'smooth' }); });
+window.addEventListener('hashchange', () => { const c = location.hash.slice(1); if (/^[0-9AB]{5}$/.test(c)) load(c); });
+(function init() {
+  const c = location.hash.slice(1);
+  if (c === 'how-it-works') { $('how-it-works').classList.add('open'); return; }
+  load(/^[0-9AB]{5}$/.test(c) ? c : '64122');
+})();
+</script>
+<div id="embabel-badge" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 0;background:rgba(10,10,15,0.9);border-top:1px solid rgba(99,192,245,0.2);font-size:0.75rem;color:#6b7280;z-index:9999;pointer-events:none;">
+  Created with <a href="https://worlds.embabel.com" target="_blank" rel="noopener noreferrer" style="color:#63c0f5;text-decoration:none;pointer-events:auto;">Embabel Worlds</a>
+</div>
+</body>
+</html>

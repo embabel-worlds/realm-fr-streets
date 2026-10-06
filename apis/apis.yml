@@ -1,0 +1,30 @@
+- url: datagouv-tabular.json
+  name: datagouv_tabular
+  type: openapi
+  auth: none
+  operation-ids:
+    - frCrimeRows
+    - frDeptCrimeRows
+    - frMayorRows
+    - frDeputyRows
+- url: insee-melodi.json
+  name: insee_melodi
+  type: openapi
+  auth: none
+  operation-ids:
+    - frFilosofi
+    - frImmigration
+    - frPopulationAge
+- url: geo-api.json
+  name: fr_geo
+  type: openapi
+  auth: none
+  operation-ids:
+    - frCommunes
+    - frDepartements
+- url: api-adresse.json
+  name: fr_adresse
+  type: openapi
+  auth: none
+  operation-ids:
+    - frGeocode

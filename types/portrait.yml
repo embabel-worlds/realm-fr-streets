@@ -1,0 +1,83 @@
+# ── Any commune, any departement — without watching it first ─────────────────
+# Literal-seeded anchors so an app can ask about ANY of France's ~35,000
+# communes by INSEE code. The existing per-place producers serve them too
+# (their joins are declared on the target types in streets.yml).
+
+- name: FrCommune
+  description: "Any French commune by INSEE code, literal-seeded — MATCH (c:FrCommune {code:'80021'}) — with joins to its geography (HAS_INFO), recorded crime (HAS_CRIME), mayor (HAS_MAYOR) and property prices (HAS_HOUSING). For census and Filosofi use FrMelodiPlace {geo:'2025-COM-<code>'}. Nothing persisted."
+  properties:
+    code: { type: string, description: "INSEE commune (or Paris/Lyon/Marseille arrondissement) code." }
+
+- name: FrMelodiPlace
+  description: "Any commune for INSEE Melodi (census, Filosofi), literal-seeded — MATCH (m:FrMelodiPlace {geo:'2025-COM-80021'}) ('2025-ARM-<code>' for an arrondissement) — with HAS_INCOME, HAS_POPULATION, HAS_IMMIGRATION. Nothing persisted."
+  properties:
+    geo: { type: string, description: "Melodi GEO key, '2025-COM-<code>'." }
+
+- name: FrDeptRef
+  description: "Any departement by code, literal-seeded — MATCH (d:FrDeptRef {code:'80'}) — with its deputies (HAS_DEPUTIES) and property prices (HAS_HOUSING; filter h.scale = 'departement', because region codes can equal departement codes). Nothing persisted."
+  properties:
+    code: { type: string, description: "Departement code ('80', '2A', '974')." }
+
+- name: FrHousingScale
+  description: "A literal-seeded scale for the national property statistics — MATCH (s:FrHousingScale {scale:'commune'}) lists every commune's row, {scale:'departement'} every departement's. Nothing persisted."
+  properties:
+    scale: { type: string, description: "'commune', 'departement', 'epci' or 'nation'." }
+
+- name: FrHousing
+  description: "Property prices from the official DVF statistics (Etalab 'Statistiques DVF', every notarised sale over the last 10 half-years, Licence Ouverte): number of sales and median / mean price per m2 for flats ('appartement'), houses ('maison'), both, and commercial premises, for one commune, departement or EPCI. Excludes Alsace-Moselle and Mayotte (not in DVF). Paris, Lyon and Marseille are published per ARRONDISSEMENT (the city row is empty). A median over few sales is noisy — read aptSales/houseSales. Via (c:FrCommune)-[:HAS_HOUSING]->(h), (d:FrDeptRef)-[:HAS_HOUSING]->(h), or nationally (s:FrHousingScale {scale:'commune'})-[:LISTS_HOUSING]->(h)."
+  virtualJoins:
+    - anchorLabel: FrCommune
+      relationship: HAS_HOUSING
+      keyField: code
+      recordKeyField: code
+      producer: frDvfByCode
+      maxAnchors: 50
+      description: "The commune's row."
+    - anchorLabel: FrDeptRef
+      relationship: HAS_HOUSING
+      keyField: code
+      recordKeyField: code
+      producer: frDvfByCode
+      maxAnchors: 20
+      description: "The departement's row (filter scale = 'departement')."
+    - anchorLabel: FrHousingScale
+      relationship: LISTS_HOUSING
+      keyField: scale
+      recordKeyField: scale
+      producer: frDvfByScale
+      maxAnchors: 2
+      description: "Every row at that scale (~39,000 communes; 101 departements), one cached 30 MB file."
+  properties:
+    id: { type: string, description: "Synthesized row id. Identity.", metadata: { identity: "true" } }
+    code: { type: string, description: "INSEE / EPCI code." }
+    name: { type: string, description: "Place name." }
+    parent: { type: string, description: "Parent code (EPCI for a commune, 'nation' for a departement)." }
+    scale: { type: string, description: "'commune', 'departement', 'epci', 'nation', 'section'." }
+    aptSales: { type: number, description: "Flat sales." }
+    aptMedianM2: { type: number, description: "Median price per m2, flats (EUR)." }
+    aptMeanM2: { type: number, description: "Mean price per m2, flats (EUR)." }
+    houseSales: { type: number, description: "House sales." }
+    houseMedianM2: { type: number, description: "Median price per m2, houses (EUR)." }
+    houseMeanM2: { type: number, description: "Mean price per m2, houses (EUR)." }
+    allSales: { type: number, description: "Flat + house sales." }
+    allMedianM2: { type: number, description: "Median price per m2, flats and houses together (EUR)." }
+
+- name: FrCommuneInfo
+  description: "One commune's geography from geo.api.gouv.fr by INSEE code: name, departement, region, municipal population, surface (ha), postal codes, centre point. Via (c:FrCommune {code:'80021'})-[:HAS_INFO]->(i). Arrondissements are not communes here (no row)."
+  virtualJoins:
+    - anchorLabel: FrCommune
+      relationship: HAS_INFO
+      keyField: code
+      recordKeyField: code
+      producer: frCommuneByCode
+      maxAnchors: 50
+      description: "One call per commune."
+  properties:
+    code: { type: string, description: "INSEE code.", metadata: { identity: "true" } }
+    name: { type: string, description: "Commune name." }
+    departement: { type: string, description: "Departement code." }
+    region: { type: string, description: "Region code." }
+    population: { type: number, description: "Municipal population." }
+    surfaceHa: { type: number, description: "Surface in hectares." }
+    postcodes: { description: "Postal codes (list)." }
+    centre: { description: "Centre point [lon, lat] (list)." }

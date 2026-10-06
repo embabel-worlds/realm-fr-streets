@@ -1,0 +1,46 @@
+# ── Repertoire national des elus (Ministere de l'Interieur, LO 2.0) ─────────
+# The CSVs are ';'-separated, which the tabular producer does not sniff, so
+# both go through the data.gouv tabular API instead (same files, filterable).
+# Column names carry spaces and accents, hence bracket JSONPath.
+# Birth dates are in the source and deliberately NOT projected.
+# No pushdown: the only filter these doors need is the key itself.
+- name: frMayorByCommune
+  kind: remote
+  operation: frMayorRows
+  records: $.data[*]
+  keyTemplate: '{key}'
+  keyJoin: ','
+  maxKeysPerCall: 50
+  args: {'Code de la commune__in': '{keys}', page_size: '200'}
+  project:
+    id: __id
+    code: "['Code de la commune']"
+    commune: "['Libellé de la commune']"
+    lastName: "[\"Nom de l'élu\"]"
+    firstName: "[\"Prénom de l'élu\"]"
+    sex: "['Code sexe']"
+    profession: "['Libellé de la catégorie socio-professionnelle']"
+    mandateStart: "['Date de début du mandat']"
+    functionStart: "['Date de début de la fonction']"
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+
+- name: frDeputiesByDepartement
+  kind: remote
+  operation: frDeputyRows
+  records: $.data[*]
+  keyTemplate: '{key}'
+  keyJoin: ','
+  maxKeysPerCall: 20
+  args: {'Code du département__in': '{keys}'}
+  paging: {style: page, param: page, sizeParam: page_size, size: 200, maxPages: 5}
+  project:
+    id: __id
+    departement: "['Code du département']"
+    circonscription: "['Code de la circonscription législative']"
+    circonscriptionName: "['Libellé de la circonscription législative']"
+    lastName: "[\"Nom de l'élu\"]"
+    firstName: "[\"Prénom de l'élu\"]"
+    sex: "['Code sexe']"
+    profession: "['Libellé de la catégorie socio-professionnelle']"
+    mandateStart: "['Date de début du mandat']"
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}

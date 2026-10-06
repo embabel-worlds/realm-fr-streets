@@ -1,0 +1,63 @@
+# ── Departement level ─────────────────────────────────────────────────────────
+# SSMSI departement base through data.gouv's tabular API (resource 2b27a675…):
+# one token = every departement x every year for the matching indicators, so a
+# trend view and a cross-section view share ONE cached fetch.
+- name: frDeptCrimeByToken
+  kind: remote
+  operation: frDeptCrimeRows
+  records: $.data[*]
+  keyArgs: [indicateur__contains]
+  echoKeyAs: key
+  args: {}
+  paging: {style: page, param: page, sizeParam: page_size, size: 200, maxPages: 40}
+  project: {departement: Code_departement, region: Code_region, year: annee, indicator: indicateur, unit: unite_de_compte, count: nombre, ratePer1000: taux_pour_mille, population: insee_pop, dwellings: insee_log}
+  compute: {id: 'r.departement + '':'' + toString(r.year) + '':'' + r.indicator'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+
+# INSEE Melodi at GEO=DEP — small (hundreds to a few thousand rows), keyless.
+- name: frDeptFilosofi
+  kind: remote
+  operation: frFilosofi
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: DEP, maxResult: '10000'}
+  project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
+  cache: {kind: ttl, seconds: 604800}
+
+- name: frDeptImmigration
+  kind: remote
+  operation: frImmigration
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: DEP, SEX: _T, AGE: _T, EMPSTA_ENQ: _T, maxResult: '10000'}
+  project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800}
+
+- name: frDeptPopulation
+  kind: remote
+  operation: frPopulationAge
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: DEP, SEX: _T, TIME_PERIOD: '2023', maxResult: '10000'}
+  project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand'}
+  cache: {kind: ttl, seconds: 604800}
+
+- name: frDepartementNames
+  kind: remote
+  operation: frDepartements
+  records: $[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {}
+  project: {code: code, name: nom, region: codeRegion}
+  cache: {kind: ttl, seconds: 2592000}

@@ -1,0 +1,258 @@
+# ── The watched place (stored) ──────────────────────────────────────────────
+- name: FrPlace
+  description: "A French place the user is watching, already resolved to its INSEE commune code (the key every French statistic joins on — NOT the postal code, which maps many-to-many to communes). Create with gateway.repository.createEntry({type:'FrPlace', data:{...}}) after geocoding via gateway.frAdresse.frGeocode (properties.citycode). For ANY commune without watching it, use FrCommune / FrMelodiPlace."
+  examples:
+    - q: which French places am I watching
+      cypher: "MATCH (p:FrPlace) RETURN p.name AS place, p.commune AS commune, p.inseeCode AS insee ORDER BY place"
+  properties:
+    name: { type: string, description: "How the user refers to the place, e.g. 'Amiens' or 'Marseille 3e'." }
+    inseeCode: { type: string, description: "INSEE code the crime and mayor joins key on: the commune (80021), or for Paris/Lyon/Marseille an arrondissement (75118, 13203, 69381)." }
+    melodiGeo: { type: string, description: "The INSEE Melodi GEO key: '2025-COM-<code>' for a commune, '2025-ARM-<code>' for an arrondissement. Set at save time." }
+    commune: { type: string, description: "Commune (or arrondissement) name, e.g. 'Amiens'." }
+    departement: { type: string, description: "Departement code ('80', '2A', '971') — the key the deputies join on." }
+    postcode: { type: string, description: "A postal code for display only; never a join key." }
+    latitude: { type: number, description: "Latitude, decimal degrees." }
+    longitude: { type: number, description: "Longitude, decimal degrees." }
+    notes: { type: string, description: "Why the user watches this place — optional." }
+
+# ── The national anchors (literal-seeded; nothing stored) ───────────────────
+- name: FrCommunes
+  description: "A literal-seeded national anchor — MATCH (u:FrCommunes {set:'france'}) mints it per query so every commune's income, census and geography rows hang off one node; nothing is persisted. The uk-streets UkDistricts pattern. National CRIME hangs off FrCrimeSlice instead."
+  properties:
+    set: { type: string, description: "The set literal, always 'france'." }
+
+- name: FrCrimeSlice
+  description: "A literal-seeded national crime slice — MATCH (s:FrCrimeSlice {slice:'Cambriolages|2025|10000'}) mints it per query, and its LISTS_CRIME edge fetches every commune whose figure SSMSI PUBLISHES for indicators whose label contains the token, that year, above the population floor. Key = '<token>|<year>|<floor>', token a space-free word of the label (the engine refuses keys with spaces): Cambriolages, intrafamiliales, hors, sexuelles, armes, violents, personnes, véhicule (3 labels), dans, accessoires, Destructions, Usage (2 labels), AFD, Trafic, Escroqueries — filter c.indicator to the exact label afterwards. Several slices in one query: WHERE s.slice IN [k1, k2]. Nothing is persisted."
+  properties:
+    slice: { type: string, description: "'<token>|<year>|<minPopulation>', e.g. 'Cambriolages|2025|10000'. Floor 10000 ~ 1,100 communes; below that most communes are suppressed." }
+
+# ── Recorded crime (SSMSI) ──────────────────────────────────────────────────
+- name: FrCrime
+  description: "One commune's police- and gendarmerie-RECORDED crime for one indicator and year (SSMSI base communale, 2016-2025, Licence Ouverte). Reached per watched place via (p:FrPlace)-[:HAS_CRIME]->(c), for any commune via (c0:FrCommune {code:'80021'})-[:HAS_CRIME]->(c), or nationally one slice at a time via (s:FrCrimeSlice {slice:'Cambriolages|2025|10000'})-[:LISTS_CRIME]->(c) — published communes above the floor only. Counted where the offence was RECORDED, rated per 1,000 residents (burglary: per 1,000 dwellings). A suppressed row (published='ndiff' — the commune did not record >5 facts in each of 3 consecutive years) has NO count and NO rate; it carries only deptAvgRateForSuppressed, the average of all suppressed communes in its departement — never present that as the commune's own rate. Paris, Lyon and Marseille appear both as the city (75056, 13055, 69123) and as arrondissements."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_CRIME
+      keyField: inseeCode
+      recordKeyField: code
+      producer: frCrimeAtPlaces
+      maxAnchors: 20
+      description: "All 10 years x 15 indicators for each watched place (~150 rows each)."
+    - anchorLabel: FrCommune
+      relationship: HAS_CRIME
+      keyField: code
+      recordKeyField: code
+      producer: frCrimeAtPlaces
+      maxAnchors: 20
+      description: "All 10 years x 15 indicators for any commune by code."
+    - anchorLabel: FrCrimeSlice
+      relationship: LISTS_CRIME
+      keyField: slice
+      recordKeyField: key
+      producer: frCrimeSlice
+      maxAnchors: 4
+      description: "Every PUBLISHED commune row for one (token, year, population floor) slice — the slice is the fetch, sent to the source as its own filters. ~1,100 rows per slice at a 10,000 floor; up to 4 slices per query (one fetch each), e.g. two years for a comparison."
+  examples:
+    - q: which large communes have the highest burglary rate
+      cypher: "MATCH (s:FrCrimeSlice {slice:'Cambriolages|2025|50000'})-[:LISTS_CRIME]->(c:FrCrime) WITH c, c.indicator AS lbl WHERE lbl = 'Cambriolages de logement' RETURN c.code AS insee, c.ratePer1000 AS rate ORDER BY rate DESC LIMIT 10"
+  properties:
+    id: { type: string, description: "commune:year:indicator. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key that produced the row — the slice key on the national door."
+    code: { type: string, description: "INSEE commune/arrondissement code (CODGEO_2026)." }
+    year: { type: int, description: "Year the facts were recorded, 2016-2025." }
+    indicator: { type: string, description: "SSMSI indicator, exactly as published: 'Violences physiques intrafamiliales', 'Violences physiques hors cadre familial', 'Violences sexuelles', 'Vols avec armes', 'Vols violents sans arme', 'Vols sans violence contre des personnes', 'Cambriolages de logement', 'Vols de véhicule', 'Vols dans les véhicules', 'Vols d''accessoires sur véhicules', 'Destructions et dégradations volontaires', 'Usage de stupéfiants', 'Usage de stupéfiants (AFD)', 'Trafic de stupéfiants', 'Escroqueries et fraudes aux moyens de paiement'." }
+    unit: { type: string, description: "What is counted: Victime, Infraction, Mis en cause, Victime entendue." }
+    count: { type: number, description: "Number of recorded facts. Absent when suppressed." }
+    ratePer1000: { type: number, description: "Facts per 1,000 residents (burglary: per 1,000 dwellings). Absent when suppressed." }
+    published: { type: string, description: "'diff' = the commune's own figure is published; 'ndiff' = suppressed." }
+    deptAvgRateForSuppressed: { type: number, description: "On a suppressed row only: the AVERAGE rate of all suppressed communes in the departement. Not this commune's rate." }
+    population: { type: number, description: "INSEE municipal population used as the denominator." }
+    dwellings: { type: number, description: "INSEE dwelling count (burglary denominator)." }
+
+# ── INSEE Melodi rows ───────────────────────────────────────────────────────
+- name: FrIncome
+  description: "INSEE Filosofi 2023 for one commune: median standard of living (MED_SL, EUR per consumption unit per year) or poverty rate (PR_MD60, % below 60% of the metropolitan median). Per place via (p:FrPlace)-[:HAS_INCOME]->(i) (all measures), for any commune via (m:FrMelodiPlace {geo:'2025-COM-<code>'})-[:HAS_INCOME]->(i); nationally via HAS_MEDIAN_INCOME / HAS_POVERTY from FrCommunes {set:'france'}, joined to FrCrime on i.code = c.code. Small communes can carry no value (statistical secrecy). Metropolitan France and La Reunion only."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_INCOME
+      keyField: melodiGeo
+      recordKeyField: key
+      producer: frIncomeAtPlace
+      maxAnchors: 20
+      description: "Every Filosofi measure for the place."
+    - anchorLabel: FrMelodiPlace
+      relationship: HAS_INCOME
+      keyField: geo
+      recordKeyField: key
+      producer: frIncomeAtPlace
+      maxAnchors: 20
+      description: "Every Filosofi measure for any commune."
+    - anchorLabel: FrCommunes
+      relationship: HAS_MEDIAN_INCOME
+      keyField: set
+      recordKeyField: key
+      producer: frMedianIncomeAll
+      maxAnchors: 1
+      description: "Median standard of living for all ~35k communes, one call, a week of cache."
+    - anchorLabel: FrCommunes
+      relationship: HAS_POVERTY
+      keyField: set
+      recordKeyField: key
+      producer: frPovertyAll
+      maxAnchors: 1
+      description: "Poverty rate for all communes, one call, a week of cache."
+  properties:
+    id: { type: string, description: "geo:measure. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key — melodiGeo for a place, the set literal nationally."
+    geo: { type: string, description: "Melodi GEO, e.g. '2026-COM-80021'." }
+    code: { type: string, description: "INSEE code parsed from geo — joins FrCrime.code." }
+    measure: { type: string, description: "MED_SL (median standard of living) or PR_MD60 (poverty rate), or another Filosofi measure per place." }
+    value: { type: number, description: "The figure; absent when INSEE withholds it." }
+    year: { type: string, description: "Reference year (2023)." }
+
+- name: FrImmigration
+  description: "Census 2023 population by immigration status for one commune. INSEE's 'immigre' = born abroad AND not French at birth — it excludes the children of immigrants, and France collects NO ethnic statistics, so this is the only published origin measure at commune level. Per place via (p:FrPlace)-[:HAS_IMMIGRATION]->(m) (status 1 immigrant, 0 non-immigrant, _T total), for any commune via FrMelodiPlace; nationally via HAS_IMMIGRANTS from FrCommunes {set:'france'} (status 1 only — divide by FrPopulation ageBand '_T' for a share). Census counts for small communes are rotating-sample estimates."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_IMMIGRATION
+      keyField: melodiGeo
+      recordKeyField: key
+      producer: frImmigrationAtPlace
+      maxAnchors: 20
+      description: "Immigrant, non-immigrant and total for the place."
+    - anchorLabel: FrMelodiPlace
+      relationship: HAS_IMMIGRATION
+      keyField: geo
+      recordKeyField: key
+      producer: frImmigrationAtPlace
+      maxAnchors: 20
+      description: "Immigrant, non-immigrant and total for any commune."
+    - anchorLabel: FrCommunes
+      relationship: HAS_IMMIGRANTS
+      keyField: set
+      recordKeyField: key
+      producer: frImmigrantsAll
+      maxAnchors: 1
+      description: "Immigrant count for all ~35k communes, one call, a week of cache."
+  properties:
+    id: { type: string, description: "geo:status. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key."
+    geo: { type: string, description: "Melodi GEO." }
+    code: { type: string, description: "INSEE code parsed from geo." }
+    status: { type: string, description: "'1' immigrant, '0' non-immigrant, '_T' total." }
+    persons: { type: number, description: "Persons (census estimate, fractional)." }
+    year: { type: string, description: "Census year." }
+
+- name: FrPopulation
+  description: "Census population for one commune by age band (AGE code): '_T' all ages, 'Y15T24' aged 15-24, 'Y_GE65' 65+, 'Y_LT15', 'Y25T39', 'Y40T54', 'Y55T64', 'Y65T79', 'Y_GE80', 'Y_LT20', 'Y20T64'. Per place via (p:FrPlace)-[:HAS_POPULATION]->(a) (census 2012, 2017, 2023), for any commune via FrMelodiPlace; nationally HAS_TOTAL_POP (ageBand '_T') and HAS_YOUNG_POP (ageBand 'Y15T24') from FrCommunes {set:'france'}, census 2023."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_POPULATION
+      keyField: melodiGeo
+      recordKeyField: key
+      producer: frPopulationAtPlace
+      maxAnchors: 20
+      description: "Every age band, three censuses, for the place."
+    - anchorLabel: FrMelodiPlace
+      relationship: HAS_POPULATION
+      keyField: geo
+      recordKeyField: key
+      producer: frPopulationAtPlace
+      maxAnchors: 20
+      description: "Every age band, three censuses, for any commune."
+    - anchorLabel: FrCommunes
+      relationship: HAS_TOTAL_POP
+      keyField: set
+      recordKeyField: key
+      producer: frPopTotalAll
+      maxAnchors: 1
+      description: "Total census population for all communes."
+    - anchorLabel: FrCommunes
+      relationship: HAS_YOUNG_POP
+      keyField: set
+      recordKeyField: key
+      producer: frPopYoungAll
+      maxAnchors: 1
+      description: "Population aged 15-24 for all communes."
+  properties:
+    id: { type: string, description: "geo:ageBand:year. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key."
+    geo: { type: string, description: "Melodi GEO." }
+    code: { type: string, description: "INSEE code parsed from geo." }
+    ageBand: { type: string, description: "INSEE AGE code." }
+    persons: { type: number, description: "Persons." }
+    year: { type: string, description: "Census year: 2012, 2017 or 2023." }
+
+- name: FrCommuneGeo
+  description: "One commune's administrative geography from geo.api.gouv.fr: name, departement, municipal population and surface (hectares) — density per km2 = population / (surfaceHa / 100). Nationally via (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g), every commune in one call; this is also where commune NAMES come from for national views."
+  virtualJoins:
+    - anchorLabel: FrCommunes
+      relationship: HAS_GEO
+      keyField: set
+      recordKeyField: key
+      producer: frCommuneGeoAll
+      maxAnchors: 1
+      description: "All ~35k communes, one call, a week of cache."
+  properties:
+    key: "The anchor key."
+    code: { type: string, description: "INSEE commune code." }
+    name: { type: string, description: "Commune name." }
+    departement: { type: string, description: "Departement code." }
+    population: { type: number, description: "Municipal population (latest legal population)." }
+    surfaceHa: { type: number, description: "Surface in hectares." }
+
+# ── Elected officials (RNE) ─────────────────────────────────────────────────
+- name: FrMayor
+  description: "The commune's mayor from the Repertoire national des elus (Ministere de l'Interieur), refreshed after the March 2026 municipales. Via (p:FrPlace)-[:HAS_MAYOR]->(m) or (c:FrCommune {code})-[:HAS_MAYOR]->(m). Keyed on the commune code, so an ARRONDISSEMENT finds no row (arrondissement mayors are not in this file)."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_MAYOR
+      keyField: inseeCode
+      recordKeyField: code
+      producer: frMayorByCommune
+      maxAnchors: 50
+      description: "One row per commune."
+    - anchorLabel: FrCommune
+      relationship: HAS_MAYOR
+      keyField: code
+      recordKeyField: code
+      producer: frMayorByCommune
+      maxAnchors: 50
+      description: "One row per commune."
+  properties:
+    id: { type: string, description: "data.gouv row id. Identity.", metadata: { identity: "true" } }
+    code: { type: string, description: "INSEE commune code." }
+    commune: { type: string, description: "Commune name." }
+    lastName: { type: string, description: "Family name." }
+    firstName: { type: string, description: "Given name." }
+    sex: { type: string, description: "M or F." }
+    profession: { type: string, description: "Socio-professional category label." }
+    mandateStart: { type: string, description: "Start of the council mandate." }
+    functionStart: { type: string, description: "Date they became mayor." }
+
+- name: FrDeputy
+  description: "A sitting deputy (Assemblee nationale) for a DEPARTEMENT, from the Repertoire national des elus — every deputy of the departement, with their circonscription; the file carries no commune-to-circonscription mapping, so this does not say which one represents an exact address. Via (p:FrPlace)-[:HAS_DEPUTIES]->(d) or (r:FrDeptRef {code:'80'})-[:HAS_DEPUTIES]->(d)."
+  virtualJoins:
+    - anchorLabel: FrPlace
+      relationship: HAS_DEPUTIES
+      keyField: departement
+      recordKeyField: departement
+      producer: frDeputiesByDepartement
+      maxAnchors: 50
+      description: "All deputies of the departement."
+    - anchorLabel: FrDeptRef
+      relationship: HAS_DEPUTIES
+      keyField: code
+      recordKeyField: departement
+      producer: frDeputiesByDepartement
+      maxAnchors: 20
+      description: "All deputies of the departement."
+  properties:
+    id: { type: string, description: "data.gouv row id. Identity.", metadata: { identity: "true" } }
+    departement: { type: string, description: "Departement code." }
+    circonscription: { type: string, description: "Circonscription code, e.g. '8001'." }
+    circonscriptionName: { type: string, description: "Circonscription label." }
+    lastName: { type: string, description: "Family name." }
+    firstName: { type: string, description: "Given name." }
+    sex: { type: string, description: "M or F." }
+    profession: { type: string, description: "Socio-professional category label." }
+    mandateStart: { type: string, description: "Start of mandate." }
