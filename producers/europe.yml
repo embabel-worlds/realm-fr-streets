@@ -1,0 +1,170 @@
+# ── Eurostat regional statistics — France against its neighbours ────────────
+# Each indicator is ONE comma-separated SDMX-CSV file from Eurostat's
+# dissemination API covering EVERY European NUTS region since 2012 (0.3-1.7 MB,
+# keyless), downloaded once and cached a week, then read by region code. Same
+# definitions on both sides of a border — the point of using Eurostat rather
+# than INSEE beside Destatis: a French departement is NUTS 3 (Bas-Rhin =
+# FRF11), a German Kreis is NUTS 3 (Ortenaukreis = DE134), a Swiss canton is
+# NUTS 3 (Basel-Stadt = CH031). Labour-market, life-expectancy and income
+# series exist only at NUTS 2 (the first four characters: FRF1 Alsace, DE13
+# Freiburg). 'p' in flag = provisional, 'e' estimated, 'b' break in series.
+
+- name: euGdpPps
+  kind: tabular
+  # GDP per inhabitant in purchasing power standards (PPS, EU27=common currency of purchasing power), NUTS 3.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gdp/A.PPS_EU27_2020_HAB.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'gdpPps'", id: "'gdpPps:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euGdpEur
+  kind: tabular
+  # GDP per inhabitant in euros at current prices, NUTS 3.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_3gdp/A.EUR_HAB.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'gdpEur'", id: "'gdpEur:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euPopulation
+  kind: tabular
+  # Population on 1 January, NUTS 3.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjanaggr3/A.NR.T.TOTAL.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'population'", id: "'population:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euDensity
+  kind: tabular
+  # Population density, persons per km2, NUTS 3.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_d3dens/A.PER_KM2.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'density'", id: "'density:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euMedianAge
+  kind: tabular
+  # Median age of the population, years, NUTS 3.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_pjanind3/A.MEDAGEPOP.YR.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'medianAge'", id: "'medianAge:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euUnemployment
+  kind: tabular
+  # Unemployment rate, % of labour force aged 15-74 (Labour Force Survey, ILO definition), NUTS 2.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/lfst_r_lfu3rt/A.TOTAL.T.Y15-74.PC.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'unemployment'", id: "'unemployment:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euYouthUnemployment
+  kind: tabular
+  # Unemployment rate, % of labour force aged 15-24, NUTS 2.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/lfst_r_lfu3rt/A.TOTAL.T.Y15-24.PC.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'youthUnemployment'", id: "'youthUnemployment:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euLifeExpectancy
+  kind: tabular
+  # Life expectancy at birth, years, NUTS 2.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/demo_r_mlifexp/A.YR.T.Y_LT1.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'lifeExpectancy'", id: "'lifeExpectancy:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+- name: euHouseholdIncome
+  kind: tabular
+  # Disposable income of private households per inhabitant, PPS, NUTS 2.
+  url: "https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/nama_10r_2hhinc/A.PPS_EU27_2020_HAB.BAL.B6N.?format=SDMX-CSV&startPeriod=2012"
+  format: csv
+  keyColumn: geo
+  keyMatch: exact
+  maxRows: 60000
+  maxRowsPerKey: 20
+  project: {geo: geo, year: TIME_PERIOD, value: OBS_VALUE, flag: OBS_FLAG, dataset: DATAFLOW, unit: unit}
+  # Identity is the indicator, region and year — never the row number, which
+  # would collide across the nine files that all feed EuRegionStat.
+  compute: {indicator: "'householdIncome'", id: "'householdIncome:' + r.geo + ':' + r.year"}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+# Region names (NUTS 2024) from Eurostat GISCO — one 90 KB file.
+- name: euRegionNames
+  kind: tabular
+  url: "https://gisco-services.ec.europa.eu/distribution/v2/nuts/csv/NUTS_AT_2024.csv"
+  format: csv
+  keyColumn: NUTS_ID
+  keyMatch: exact
+  maxRows: 5000
+  maxRowsPerKey: 2
+  project: {code: NUTS_ID, name: NUTS_NAME, latinName: NAME_LATN}
+  # The file starts with a byte-order mark glued to CNTR_CODE, so the country is
+  # taken from the code instead (a NUTS code's first two letters ARE the country).
+  compute: {country: 'substring(r.code, 0, 2)', id: 'r.code'}
+  fileCacheSeconds: 2592000
+  cache: {kind: ttl, seconds: 2592000}

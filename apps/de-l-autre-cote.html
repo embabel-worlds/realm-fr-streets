@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De l'autre côté de la frontière</title>
+<meta name="description" content="La France face à ses voisins, région par région, sur une même mesure européenne (Eurostat) : PIB et revenu des ménages par habitant, chômage, chômage des jeunes, espérance de vie, âge médian, population — du Rhin aux Pyrénées, en français et en anglais.">
+<link rel="stylesheet" href="/api/v1/apps-runtime/v1/theme.css">
+<script src="/api/v1/apps-runtime/v1/embabel.js"></script>
+<script src="/api/v1/apps-runtime/gateway.js"></script>
+<script type="application/embabel-app+json">
+{"version":1,"name":"de-l-autre-cote","requires":{"views":["EuBorderRegions"],"realms":["fr-streets"],"namespaces":["view"]}}
+</script>
+<style>
+  :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#181822; --border:#1e1e2e; --cyan:#63c0f5; --purple:#9f77cd;
+          --green:#3fd73c; --dim:#6b7280; --text:#e5e7eb; --red:#f2726f; --bleu:#4f7cff; --rouge:#ef4444; --gold:#e8b04b; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.45; }
+  body.lang-fr .en, body.lang-en .fr { display:none !important; }
+  main { max-width:1080px; margin:0 auto; padding:28px 16px 90px; }
+  .top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+  .lang { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; flex:none; }
+  .lang button { background:none; border:0; color:var(--dim); padding:5px 12px; font:inherit; font-size:0.82rem; cursor:pointer; }
+  .lang button.on { background:var(--cyan); color:#04121c; font-weight:600; }
+  h1 { margin:0 0 6px; font-size:1.65rem; letter-spacing:-0.01em; }
+  h1 .tri { display:inline-block; width:6px; height:1.05em; vertical-align:-0.12em; }
+  .lede { color:var(--dim); margin:0; max-width:760px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 10px; }
+  .chips button { background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:999px;
+                  padding:6px 13px; font:inherit; font-size:0.86rem; cursor:pointer; }
+  .chips button.on { border-color:var(--cyan); color:var(--cyan); background:rgba(99,192,245,0.08); }
+  .tabs { display:flex; flex-wrap:wrap; gap:4px; border-bottom:1px solid var(--border); margin:14px 0 0; }
+  .tabs button { background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); padding:8px 10px;
+                 font:inherit; font-size:0.86rem; cursor:pointer; margin-bottom:-1px; }
+  .tabs button.on { color:var(--text); border-bottom-color:var(--cyan); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; margin-top:16px; min-width:0; }
+  .card h2 { margin:0 0 4px; font-size:1.05rem; }
+  .sub { color:var(--dim); font-size:0.82rem; margin:0 0 12px; }
+  .state { color:var(--dim); font-size:0.9rem; padding:10px 0; }
+  .state.err { color:var(--red); }
+  .state.busy::before { content:''; display:inline-block; width:10px; height:10px; margin-right:8px; border:2px solid var(--cyan);
+                        border-right-color:transparent; border-radius:50%; animation:spin .8s linear infinite; vertical-align:-1px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .headline { font-size:1.02rem; margin:0 0 4px; }
+  .headline b { color:var(--cyan); font-weight:650; }
+  .bars { display:grid; grid-template-columns:minmax(120px, 230px) 1fr minmax(84px, auto); gap:6px 10px; align-items:center; font-size:0.86rem; }
+  .bars .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bars .nm small { color:var(--dim); }
+  .track { position:relative; height:16px; background:var(--bg); border-radius:3px; }
+  .track .fill { position:absolute; left:0; top:0; bottom:0; border-radius:3px; }
+  .track .ref { position:absolute; top:-3px; bottom:-3px; width:2px; border-radius:1px; }
+  .bars .val { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .bars .val small { color:var(--dim); }
+  .bars .sep { grid-column:1 / -1; border-top:1px dashed var(--border); margin:4px 0; }
+  .bars .na { color:var(--dim); font-size:0.8rem; }
+  .legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; font-size:0.78rem; color:var(--dim); }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .legend i.dash { height:2px; width:14px; vertical-align:3px; border-radius:0; }
+  svg text { fill:var(--dim); font-size:11px; font-family:inherit; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; }
+  .kpi { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .kpi .k { font-size:0.78rem; color:var(--dim); margin-bottom:6px; }
+  .kpi .row { display:flex; justify-content:space-between; gap:8px; font-size:0.86rem; padding:2px 0; }
+  .kpi .row span:last-child { font-variant-numeric:tabular-nums; }
+  .note { font-size:0.8rem; color:var(--dim); border-left:2px solid var(--purple); padding:4px 10px; margin:12px 0 0; }
+  a { color:var(--cyan); }
+  footer { margin-top:28px; text-align:center; font-size:0.8rem; color:var(--dim); }
+  #how-it-works { display:none; }
+  #how-it-works.open { display:block; }
+  #how-it-works h3 { font-size:0.95rem; margin:18px 0 6px; }
+  #how-it-works p, #how-it-works li { font-size:0.86rem; color:#c8ccd4; }
+  @media (max-width:560px) { .bars { grid-template-columns:minmax(90px, 130px) 1fr auto; font-size:0.8rem; } }
+</style>
+</head>
+<body class="lang-fr">
+<main>
+  <header>
+    <div class="top">
+      <h1><span class="tri" style="background:var(--bleu)"></span><span class="tri" style="background:#fff"></span><span class="tri" style="background:var(--rouge)"></span>
+        <span class="fr">De l'autre côté de la frontière</span><span class="en">Across the border</span></h1>
+      <div class="lang" role="group" aria-label="Langue / Language"><button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button></div>
+    </div>
+    <p class="lede">
+      <span class="fr">La France face à ses voisins, région par région, mesurée avec la même règle des deux côtés : les statistiques régionales d'Eurostat. Choisissez une frontière, puis un indicateur.</span>
+      <span class="en">France against its neighbours, region by region, measured with the same ruler on both sides: Eurostat's regional statistics. Pick a border, then an indicator.</span>
+    </p>
+  </header>
+
+  <nav class="chips" id="borders" aria-label="Frontière / Border"></nav>
+  <nav class="tabs" id="tabs" aria-label="Indicateur / Indicator"></nav>
+
+  <section class="card">
+    <div id="state" class="state busy"></div>
+    <div id="main" hidden>
+      <p class="headline" id="headline"></p>
+      <p class="sub" id="levelnote"></p>
+      <div class="bars" id="bars"></div>
+      <div class="legend" id="legend"></div>
+      <p class="note" id="caveat" hidden></p>
+    </div>
+  </section>
+
+  <section class="card" id="trend-card" hidden>
+    <h2><span class="fr">Depuis 2012</span><span class="en">Since 2012</span></h2>
+    <p class="sub"><span class="fr">Chaque série publiée par Eurostat ; en pointillés, les moyennes nationales.</span><span class="en">Every series Eurostat publishes; dashed lines are the national figures.</span></p>
+    <div id="trend"></div>
+  </section>
+
+  <section class="card" id="kpi-card" hidden>
+    <h2><span class="fr">En un coup d'œil</span><span class="en">At a glance</span></h2>
+    <p class="sub"><span class="fr">Dernière valeur publiée pour chaque région de cette frontière.</span><span class="en">Latest published value for each region on this border.</span></p>
+    <div class="grid2" id="kpis"></div>
+  </section>
+
+  <section id="how-it-works" class="card">
+    <div class="fr">
+      <h2>Comment ça marche</h2>
+      <h3>1. Les données</h3>
+      <ul>
+        <li><b>Eurostat</b>, l'office statistique de l'Union européenne, publie les mêmes indicateurs pour chaque région d'Europe avec les mêmes définitions — c'est ce qui rend une comparaison de part et d'autre d'une frontière honnête. Le realm <code>fr-streets</code> lit neuf fichiers (un par indicateur, toutes les régions d'Europe depuis 2012), sans clé ni compte, et les garde en cache une semaine.</li>
+        <li><b>Les régions</b> suivent la nomenclature européenne NUTS 2024 : un département français est une région NUTS 3 (Bas-Rhin = FRF11), comme un Kreis allemand (Ortenaukreis = DE134) ou un canton suisse (Bâle-Ville = CH031). Leur « région NUTS 2 » est l'échelon au-dessus (Alsace = FRF1, Fribourg-en-Brisgau = DE13).</li>
+        <li><b>Chômage, chômage des jeunes, espérance de vie et revenu des ménages</b> ne sont publiés qu'à l'échelon NUTS 2 : l'application les montre pour l'Alsace, pas pour le Bas-Rhin, et le dit.</li>
+        <li><b>Le PIB par habitant</b> est compté là où il est <i>produit</i>. Un département dont les habitants travaillent de l'autre côté (la Moselle vers le Luxembourg, la Haute-Savoie vers Genève) a un PIB par habitant bas sans que ses ménages soient pauvres : lisez-le à côté du revenu des ménages.</li>
+        <li><b>SPA</b> (standard de pouvoir d'achat) : une monnaie commune qui corrige les différences de prix entre pays. « p » signale une valeur provisoire, « e » une estimation.</li>
+        <li>Eurostat ne publie ni PIB départemental ni revenu des ménages pour la <b>Suisse</b> : ces cases sont vides, jamais nulles.</li>
+      </ul>
+      <h3>2. La question</h3>
+      <p>L'application appelle une vue enregistrée, <code>EuBorderRegions</code>, une seule fois : elle renvoie chaque frontière, chaque région des deux côtés, leur région NUTS 2 et les pays, avec les séries complètes. Changer de frontière ou d'indicateur se fait ensuite dans la page, sans nouvel appel. Le choix de la langue est mémorisé dans ce navigateur.</p>
+      <h3>3. Si quelque chose semble faux</h3>
+      <ul>
+        <li><b>« Non publié »</b> : Eurostat n'a pas de valeur pour cette région et cet indicateur.</li>
+        <li><b>Années différentes</b> : chaque pays transmet à son rythme ; l'année de chaque valeur est affichée à côté.</li>
+        <li><b>Un panneau indique un échec</b> : Eurostat ou le moteur n'a pas répondu ; rechargez la page.</li>
+      </ul>
+    </div>
+    <div class="en">
+      <h2>How it works</h2>
+      <h3>1. The data</h3>
+      <ul>
+        <li><b>Eurostat</b>, the EU's statistical office, publishes the same indicators for every region of Europe under the same definitions — which is what makes a comparison across a border honest. The <code>fr-streets</code> realm reads nine files (one per indicator, every European region since 2012), keyless, and caches them for a week.</li>
+        <li><b>Regions</b> follow the EU's NUTS 2024 classification: a French département is a NUTS 3 region (Bas-Rhin = FRF11), as is a German Kreis (Ortenaukreis = DE134) or a Swiss canton (Basel-Stadt = CH031). Their "NUTS 2 region" is the level above (Alsace = FRF1, Freiburg = DE13).</li>
+        <li><b>Unemployment, youth unemployment, life expectancy and household income</b> are published only at NUTS 2: the app shows them for Alsace, not Bas-Rhin, and says so.</li>
+        <li><b>GDP per head</b> is counted where it is <i>produced</i>. A département whose residents work across the border (Moselle into Luxembourg, Haute-Savoie into Geneva) shows low GDP per head without its households being poor: read it beside household income.</li>
+        <li><b>PPS</b> (purchasing power standard): a common currency that corrects for price differences between countries. "p" marks a provisional value, "e" an estimate.</li>
+        <li>Eurostat publishes no regional GDP and no household income for <b>Switzerland</b>: those cells are empty, never zero.</li>
+      </ul>
+      <h3>2. The question</h3>
+      <p>The app calls one saved view, <code>EuBorderRegions</code>, once: it returns every border, every region on both sides, their NUTS 2 regions and the countries, with full series. Switching border or indicator then happens in the page, with no new call. Your language choice is remembered in this browser.</p>
+      <h3>3. When it looks wrong</h3>
+      <ul>
+        <li><b>"Not published"</b>: Eurostat has no value for that region and indicator.</li>
+        <li><b>Different years</b>: each country reports on its own schedule; every value shows its year.</li>
+        <li><b>A panel says it failed</b>: Eurostat or the engine did not answer; reload the page.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer><a href="#" id="hiw-link"><span class="fr">Comment ça marche</span><span class="en">How it works</span></a></footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+function escapeHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ── language ───────────────────────────────────────────────────────── */
+const LANG_KEY = 'fr-streets-lang';
+let LANG = 'fr';
+try { const saved = localStorage.getItem(LANG_KEY); if (saved === 'en' || saved === 'fr') LANG = saved; } catch (e) { /* storage blocked: default French */ }
+const loc = () => (LANG === 'fr' ? 'fr-FR' : 'en-GB');
+const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString(loc(), { maximumFractionDigits: d, minimumFractionDigits: d });
+
+const T = {
+  fr: { loading: 'Chargement des régions des deux côtés de chaque frontière (Eurostat)…', fail: 'Les données n\'ont pas pu être chargées : ',
+        empty: 'la vue n\'a rien renvoyé', viewFail: 'la vue a échoué', sourceFail: 'une source n\'a pas répondu : ', timeout: 'délai dépassé',
+        notPublished: 'non publié', regionLevel: (n) => `Mesuré pour la région NUTS 2 (${n}) — Eurostat ne le publie pas par département.`,
+        deptLevel: 'Mesuré pour chaque département, Kreis, arrondissement ou canton (NUTS 3).',
+        frSide: 'côté français', neighbours: 'voisins', countries: 'pays', otherSide: 'De l\'autre côté',
+        range: (lo, hi) => `de ${lo} à ${hi}`, nationally: 'Moyennes nationales', since: 'depuis' },
+  en: { loading: 'Loading the regions on both sides of every border (Eurostat)…', fail: 'The data failed to load: ',
+        empty: 'the view returned nothing', viewFail: 'the view failed', sourceFail: 'a source did not answer: ', timeout: 'timed out',
+        notPublished: 'not published', regionLevel: (n) => `Measured for the NUTS 2 region (${n}) — Eurostat does not publish it per département.`,
+        deptLevel: 'Measured for each département, Kreis, arrondissement or canton (NUTS 3).',
+        frSide: 'French side', neighbours: 'neighbours', countries: 'countries', otherSide: 'Across the border',
+        range: (lo, hi) => `from ${lo} to ${hi}`, nationally: 'National figures', since: 'since' },
+};
+const t = (k) => T[LANG][k] ?? T.fr[k] ?? k;
+
+const COUNTRY = {
+  FR: { fr: 'France', en: 'France', c: '#4f7cff' }, DE: { fr: 'Allemagne', en: 'Germany', c: '#e8b04b' },
+  CH: { fr: 'Suisse', en: 'Switzerland', c: '#f2726f' }, LU: { fr: 'Luxembourg', en: 'Luxembourg', c: '#63c0f5' },
+  BE: { fr: 'Belgique', en: 'Belgium', c: '#9f77cd' }, IT: { fr: 'Italie', en: 'Italy', c: '#3fd73c' },
+  ES: { fr: 'Espagne', en: 'Spain', c: '#f59e0b' },
+};
+const BORDERS = [
+  { id: 'rhin-nord', fr: 'Rhin nord · Bas-Rhin, Bade, Palatinat', en: 'Upper Rhine north · Bas-Rhin, Baden, Palatinate' },
+  { id: 'rhin-sud', fr: 'Rhin sud · Haut-Rhin, Brisgau, Bâle', en: 'Upper Rhine south · Haut-Rhin, Breisgau, Basel' },
+  { id: 'sarre-lorraine-lux', fr: 'Lorraine · Sarre, Luxembourg, Belgique', en: 'Lorraine · Saarland, Luxembourg, Belgium' },
+  { id: 'flandre-hainaut', fr: 'Nord · Flandre, Hainaut', en: 'Nord · Flanders, Hainaut' },
+  { id: 'ardennes', fr: 'Ardennes · Namur, Luxembourg belge', en: 'Ardennes · Namur, Belgian Luxembourg' },
+  { id: 'jura', fr: 'Jura · Neuchâtel, Jura, Vaud', en: 'Jura · Neuchâtel, Jura, Vaud' },
+  { id: 'leman', fr: 'Léman · Genève, Vaud, Valais', en: 'Lake Geneva · Geneva, Vaud, Valais' },
+  { id: 'alpes', fr: 'Alpes · Val d\'Aoste, Piémont, Ligurie', en: 'Alps · Aosta, Piedmont, Liguria' },
+  { id: 'pyrenees', fr: 'Pyrénées · Pays basque, Navarre, Aragon, Catalogne', en: 'Pyrenees · Basque Country, Navarre, Aragon, Catalonia' },
+];
+/* level: where Eurostat publishes it. unit: how a value reads in each language. */
+const IND = [
+  { key: 'gdpPps', level: 3, d: 0, fr: 'PIB par habitant', en: 'GDP per head', unit: { fr: ' SPA', en: ' PPS' },
+    sub: { fr: 'en standard de pouvoir d\'achat — compté là où il est produit', en: 'in purchasing power standards — counted where it is produced' } },
+  { key: 'householdIncome', level: 2, d: 0, fr: 'Revenu des ménages', en: 'Household income', unit: { fr: ' SPA', en: ' PPS' },
+    sub: { fr: 'revenu disponible par habitant, en SPA', en: 'disposable income per head, in PPS' } },
+  { key: 'unemployment', level: 2, d: 1, fr: 'Chômage', en: 'Unemployment', unit: { fr: ' %', en: '%' },
+    sub: { fr: '15–74 ans, définition du BIT', en: 'aged 15–74, ILO definition' } },
+  { key: 'youthUnemployment', level: 2, d: 1, fr: 'Chômage des jeunes', en: 'Youth unemployment', unit: { fr: ' %', en: '%' },
+    sub: { fr: '15–24 ans', en: 'aged 15–24' } },
+  { key: 'lifeExpectancy', level: 2, d: 1, fr: 'Espérance de vie', en: 'Life expectancy', unit: { fr: ' ans', en: ' years' },
+    sub: { fr: 'à la naissance', en: 'at birth' } },
+  { key: 'medianAge', level: 3, d: 1, fr: 'Âge médian', en: 'Median age', unit: { fr: ' ans', en: ' years' },
+    sub: { fr: 'de la population', en: 'of the population' } },
+  { key: 'popChange', level: 3, d: 1, fr: 'Évolution de la population', en: 'Population change', unit: { fr: ' %', en: '%' }, signed: true,
+    sub: { fr: 'depuis la première année publiée (2012 en général)', en: 'since the first published year (2012 for most)' } },
+  { key: 'density', level: 3, d: 0, fr: 'Densité', en: 'Density', unit: { fr: ' hab./km²', en: ' per km²' },
+    sub: { fr: 'habitants par km²', en: 'inhabitants per km²' } },
+];
+
+const S = { rows: [], border: 'rhin-nord', ind: 'gdpPps' };
+try { const b = localStorage.getItem('fr-streets-border'); if (BORDERS.some((x) => x.id === b)) S.border = b; } catch (e) { /* default border */ }
+
+/* ── series helpers ─────────────────────────────────────────────────── */
+function series(row, key) {
+  if (key === 'popChange') {
+    const p = (row.series.population || []).filter((x) => x.value != null).sort((a, b) => a.year.localeCompare(b.year));
+    if (p.length < 2) return [];
+    const base = p[0].value;
+    return p.map((x) => ({ year: x.year, value: 100 * (x.value - base) / base, flag: x.flag, base: p[0].year }));
+  }
+  return (row.series[key] || []).filter((x) => x.value != null).slice().sort((a, b) => a.year.localeCompare(b.year));
+}
+const latest = (row, key) => { const s = series(row, key); return s.length ? s[s.length - 1] : null; };
+const ind = () => IND.find((i) => i.key === S.ind);
+function fmtVal(v, i) {
+  if (v == null) return '—';
+  const s = nf(v, i.d) + i.unit[LANG];
+  return i.signed && v > 0 ? '+' + s : s;
+}
+const rname = (r) => r.level === 0 ? (COUNTRY[r.code] ? COUNTRY[r.code][LANG] : r.name) : r.name;
+const colour = (r) => (COUNTRY[r.country] || { c: '#9ca3af' }).c;
+
+/* ── render ─────────────────────────────────────────────────────────── */
+function rowsForBorder() { return S.rows.filter((r) => r.border === S.border); }
+function render() {
+  if (!S.rows.length) return;
+  const i = ind(), all = rowsForBorder();
+  const regional = all.filter((r) => r.level === i.level);
+  const fr = regional.filter((r) => r.side === 'fr'), nb = regional.filter((r) => r.side === 'neighbour');
+  const countries = all.filter((r) => r.level === 0);
+  const val = (r) => { const l = latest(r, i.key); return l ? l.value : null; };
+  const nums = [...regional, ...countries].map(val).filter((v) => v != null);
+  const lo = i.signed ? Math.min(0, ...nums) : 0, hi = Math.max(...nums, 0.0001);
+
+  /* headline: the French side, then the range across the border — figures only */
+  const frTxt = fr.map((r) => `${escapeHtml(r.name)} <b>${escapeHtml(fmtVal(val(r), i))}</b>`).join(' · ');
+  const nbv = nb.filter((r) => val(r) != null).sort((a, b) => val(a) - val(b));
+  let hl = frTxt;
+  if (nbv.length) {
+    const a = nbv[0], b = nbv[nbv.length - 1];
+    const range = nbv.length === 1 ? `${escapeHtml(a.name)} <b>${escapeHtml(fmtVal(val(a), i))}</b>`
+      : T[LANG].range(`<b>${escapeHtml(fmtVal(val(a), i))}</b> (${escapeHtml(a.name)})`, `<b>${escapeHtml(fmtVal(val(b), i))}</b> (${escapeHtml(b.name)})`);
+    hl += `<br><span style="color:var(--dim)">${escapeHtml(t('otherSide'))}${LANG === 'fr' ? ' :' : ':'}</span> ${range}`;
+  }
+  $('headline').innerHTML = `<span style="color:var(--dim)">${escapeHtml(i[LANG])} — ${escapeHtml(i.sub[LANG])}</span><br>` + hl;
+  $('levelnote').textContent = i.level === 2 ? T[LANG].regionLevel(fr.map((r) => r.name).join(', ')) : t('deptLevel');
+
+  /* bars: French side, neighbours, then countries as reference */
+  const bar = (r) => {
+    const l = latest(r, i.key);
+    if (!l) return `<div class="nm">${escapeHtml(rname(r))} <small>${escapeHtml(r.code)}</small></div><div class="na">${escapeHtml(t('notPublished'))}</div><div></div>`;
+    const span = hi - lo || 1, left = (Math.min(l.value, 0) - lo) / span * 100, w = Math.abs(l.value) / span * 100;
+    const flag = l.flag ? ` <small title="Eurostat">${escapeHtml(l.flag)}</small>` : '';
+    const base = l.base ? ` <small>${escapeHtml(t('since'))} ${escapeHtml(l.base)}</small>` : '';
+    return `<div class="nm" title="${escapeHtml(rname(r))} (${escapeHtml(r.code)})">${escapeHtml(rname(r))} <small>${escapeHtml(r.code)}</small></div>
+      <div class="track"><div class="fill" style="left:${left.toFixed(2)}%;width:${Math.max(w, 0.4).toFixed(2)}%;background:${colour(r)};${r.side === 'fr' ? '' : 'opacity:.85'}"></div></div>
+      <div class="val">${escapeHtml(fmtVal(l.value, i))} <small>${escapeHtml(l.year)}</small>${flag}${base}</div>`;
+  };
+  const sep = '<div class="sep"></div>';
+  $('bars').innerHTML = fr.map(bar).join('') + sep + nb.map(bar).join('') + sep + countries.map(bar).join('');
+  const present = [...new Set([...regional, ...countries].map((r) => r.country))];
+  $('legend').innerHTML = present.map((c) => `<span><i style="background:${COUNTRY[c] ? COUNTRY[c].c : '#9ca3af'}"></i>${escapeHtml(COUNTRY[c] ? COUNTRY[c][LANG] : c)}</span>`).join('');
+
+  const notes = [];
+  if (i.key === 'gdpPps') notes.push(LANG === 'fr'
+    ? 'Le PIB est compté là où il est produit : un territoire dont les habitants travaillent de l\'autre côté de la frontière affiche un PIB par habitant plus bas que le niveau de vie de ses ménages. Comparez avec « Revenu des ménages ».'
+    : 'GDP is counted where it is produced: a place whose residents work across the border shows a lower GDP per head than its households\' living standard. Compare with "Household income".');
+  if (all.some((r) => r.country === 'CH') && (i.key === 'gdpPps' || i.key === 'householdIncome')) notes.push(LANG === 'fr'
+    ? 'Eurostat ne publie ni PIB régional ni revenu des ménages pour la Suisse.'
+    : 'Eurostat publishes no regional GDP and no household income for Switzerland.');
+  $('caveat').hidden = !notes.length;
+  $('caveat').textContent = notes.join(' ');
+  $('state').hidden = true; $('main').hidden = false;
+
+  renderTrend([...fr, ...nb], countries, i);
+  renderKpis(all);
+}
+
+function renderTrend(regs, countries, i) {
+  const lines = [...regs, ...countries].map((r) => ({ r, s: series(r, i.key) })).filter((l) => l.s.length > 1);
+  if (!lines.length) { $('trend-card').hidden = true; return; }
+  $('trend-card').hidden = false;
+  const W = 1000, H = 300, P = { l: 64, r: 16, t: 12, b: 26 };
+  const years = [...new Set(lines.flatMap((l) => l.s.map((x) => +x.year)))].sort((a, b) => a - b);
+  const vals = lines.flatMap((l) => l.s.map((x) => x.value));
+  let y0 = Math.min(...vals), y1 = Math.max(...vals); const pad = (y1 - y0) * 0.08 || 1; y0 -= pad; y1 += pad;
+  const X = (y) => P.l + (y - years[0]) / ((years[years.length - 1] - years[0]) || 1) * (W - P.l - P.r);
+  const Y = (v) => H - P.b - (v - y0) / (y1 - y0) * (H - P.t - P.b);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${escapeHtml(i[LANG])}">`;
+  for (let k = 0; k <= 4; k++) {
+    const v = y0 + (y1 - y0) * k / 4;
+    svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1e1e2e"/><text x="${P.l - 8}" y="${Y(v) + 4}" text-anchor="end">${escapeHtml(nf(v, i.d))}</text>`;
+  }
+  years.forEach((y) => { svg += `<text x="${X(y)}" y="${H - 8}" text-anchor="middle">${y}</text>`; });
+  for (const { r, s } of lines) {
+    const d = s.map((x, k) => `${k ? 'L' : 'M'}${X(+x.year).toFixed(1)},${Y(x.value).toFixed(1)}`).join(' ');
+    const dash = r.level === 0 ? ' stroke-dasharray="6 5"' : '';
+    const wgt = r.side === 'fr' && r.level !== 0 ? 3 : 1.6;
+    svg += `<path d="${d}" fill="none" stroke="${colour(r)}" stroke-width="${wgt}"${dash} opacity="${r.side === 'fr' || r.level === 0 ? 1 : 0.75}"><title>${escapeHtml(rname(r))}</title></path>`;
+    const last = s[s.length - 1];
+    svg += `<circle cx="${X(+last.year)}" cy="${Y(last.value)}" r="3" fill="${colour(r)}"><title>${escapeHtml(rname(r))} ${escapeHtml(last.year)}: ${escapeHtml(fmtVal(last.value, i))}</title></circle>`;
+  }
+  svg += '</svg>';
+  const leg = lines.map(({ r }) => `<span><i class="${r.level === 0 ? 'dash' : ''}" style="background:${colour(r)}"></i>${escapeHtml(rname(r))}</span>`).join('');
+  $('trend').innerHTML = svg + `<div class="legend">${leg}</div>`;
+}
+
+function renderKpis(all) {
+  const pick = ['unemployment', 'lifeExpectancy', 'householdIncome', 'medianAge'];
+  $('kpi-card').hidden = false;
+  $('kpis').innerHTML = pick.map((k) => {
+    const i = IND.find((x) => x.key === k);
+    const rows = all.filter((r) => r.level === i.level || r.level === 0).filter((r) => latest(r, k));
+    const body = rows.map((r) => {
+      const l = latest(r, k);
+      return `<div class="row"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;background:${colour(r)}"></i>${escapeHtml(rname(r))}</span><span>${escapeHtml(fmtVal(l.value, i))}</span></div>`;
+    }).join('') || `<div class="row"><span>${escapeHtml(t('notPublished'))}</span></div>`;
+    return `<div class="kpi"><div class="k">${escapeHtml(i[LANG])} · ${escapeHtml(i.sub[LANG])}</div>${body}</div>`;
+  }).join('');
+}
+
+/* ── controls ───────────────────────────────────────────────────────── */
+function drawControls() {
+  $('borders').innerHTML = BORDERS.map((b) => `<button type="button" data-b="${b.id}" class="${b.id === S.border ? 'on' : ''}">${escapeHtml(b[LANG])}</button>`).join('');
+  $('tabs').innerHTML = IND.map((i) => `<button type="button" data-i="${i.key}" class="${i.key === S.ind ? 'on' : ''}">${escapeHtml(i[LANG])}</button>`).join('');
+}
+$('borders').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !b.dataset.b) return;
+  S.border = b.dataset.b;
+  try { localStorage.setItem('fr-streets-border', S.border); } catch (err) { /* not remembered */ }
+  drawControls(); render();
+});
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b || !b.dataset.i) return;
+  S.ind = b.dataset.i; drawControls(); render();
+});
+
+function applyLang() {
+  document.body.className = 'lang-' + LANG;
+  document.documentElement.lang = LANG;
+  document.title = LANG === 'fr' ? 'De l\'autre côté de la frontière' : 'Across the border';
+  document.querySelectorAll('.lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === LANG));
+  drawControls();
+  if (S.rows.length) render(); else if ($('state').classList.contains('busy')) $('state').textContent = t('loading');
+}
+document.querySelector('.lang').addEventListener('click', (e) => {
+  const l = e.target.dataset && e.target.dataset.lang; if (!l || l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem(LANG_KEY, LANG); } catch (err) { /* not persisted; still switches */ }
+  applyLang();
+});
+
+/* Every view call is bounded: a request that never settles ends as a stated failure. */
+async function runView(name, params, ms = 120000) {
+  let tm;
+  const timeout = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('timeout') + ' (' + Math.round(ms / 1000) + ' s)')), ms); });
+  try {
+    const res = await Promise.race([gateway.view.run({ name, params }), timeout]);
+    if (!res || typeof res !== 'object') throw new Error(t('empty'));
+    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || t('viewFail'));
+    const bad = (res.warnings || []).filter((w) => /PRODUCER_ERROR|INCOMPLETE|NEEDS_FILTER|TRUNCATED/.test(String(w)));
+    if (bad.length) throw new Error(t('sourceFail') + String(bad[0]).slice(0, 160));
+    return res.rows || [];
+  } finally { clearTimeout(tm); }
+}
+
+(async function init() {
+  applyLang();
+  $('hiw-link').addEventListener('click', (ev) => {
+    ev.preventDefault();
+    const h = $('how-it-works'); h.classList.toggle('open');
+    if (h.classList.contains('open')) h.scrollIntoView({ behavior: 'smooth' });
+  });
+  if (location.hash === '#how-it-works') $('how-it-works').classList.add('open');
+  try {
+    S.rows = await runView('EuBorderRegions', { border: 'all' });
+    if (!S.rows.length) throw new Error(t('empty'));
+    render();
+  } catch (e) {
+    $('state').className = 'state err';
+    $('state').textContent = t('fail') + e.message;
+  }
+})();
+</script>
+<div id="embabel-badge" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 0;background:rgba(10,10,15,0.9);border-top:1px solid rgba(99,192,245,0.2);font-size:0.75rem;color:#6b7280;z-index:9999;pointer-events:none;">
+  Created with <a href="https://worlds.embabel.com" target="_blank" rel="noopener noreferrer" style="color:#63c0f5;text-decoration:none;pointer-events:auto;">Embabel Worlds</a>
+</div>
+</body>
+</html>

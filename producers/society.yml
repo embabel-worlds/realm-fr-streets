@@ -1,0 +1,214 @@
+# ── Work and qualifications (INSEE census 2023, Melodi) ──────────────────────
+# Same shape as insee.yml: one call per place, or one call for every commune
+# (~35k observations, 5-10 s cold) cached a week. Census unemployment is
+# SELF-DECLARED (ILO-style questions in the census form), so it runs higher than
+# France Travail registrations or the ILO survey rate — compare like with like.
+- name: frActivityAtPlace
+  kind: remote
+  operation: frActivity
+  records: $.observations[*]
+  keyArg: GEO
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {SEX: _T, AGE: Y_GE15}
+  project: {geo: dimensions.GEO, status: dimensions.EMPSTA_ENQ, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+- name: frUnemployedAll
+  kind: remote
+  operation: frActivity
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, AGE: Y_GE15, EMPSTA_ENQ: '2', maxResult: '60000'}
+  project: {geo: dimensions.GEO, status: dimensions.EMPSTA_ENQ, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frLabourForceAll
+  kind: remote
+  operation: frActivity
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, AGE: Y_GE15, EMPSTA_ENQ: 1T2, maxResult: '60000'}
+  project: {geo: dimensions.GEO, status: dimensions.EMPSTA_ENQ, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  cache: {kind: ttl, seconds: 604800}
+
+- name: frDiplomasAtPlace
+  kind: remote
+  operation: frDiplomas
+  records: $.observations[*]
+  keyArg: GEO
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {SEX: _T}
+  project: {geo: dimensions.GEO, level: dimensions.EDUC, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.level + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
+- name: frNoDiplomaAll
+  kind: remote
+  operation: frDiplomas
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, EDUC: 001T100_RP, TIME_PERIOD: '2023', maxResult: '60000'}
+  project: {geo: dimensions.GEO, level: dimensions.EDUC, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.level + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frGraduatesAll
+  kind: remote
+  operation: frDiplomas
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, EDUC: 500T702_RP, TIME_PERIOD: '2023', maxResult: '60000'}
+  project: {geo: dimensions.GEO, level: dimensions.EDUC, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.level + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800}
+- name: frDiplomaBaseAll
+  kind: remote
+  operation: frDiplomas
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: COM, SEX: _T, EDUC: _T, TIME_PERIOD: '2023', maxResult: '60000'}
+  project: {geo: dimensions.GEO, level: dimensions.EDUC, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.level + '':'' + r.year'}
+  cache: {kind: ttl, seconds: 604800}
+
+# ── European elections, 9 June 2024 (Ministere de l'Interieur) ───────────────
+# The official per-commune results file. The CSV is ';'-delimited (the tabular
+# reader takes ',' only), so the realm reads the ministry's xlsx of the SAME
+# results: one sheet, ~35k rows, 46 MB, downloaded once and cached a week.
+# Every list kept the SAME panel number in every commune of France, so
+# 'Voix 5' is the RN list everywhere — a commune's row needs no list lookup.
+# All 38 panels are projected; nothing is grouped or relabelled here — which
+# lists to sum is the caller's choice, stated in the caller's own terms.
+- name: frEuro24ByCode
+  kind: tabular
+  url: "https://static.data.gouv.fr/resources/resultats-des-elections-europeennes-du-9-juin-2024/20240613-155013/resultats-definitifs-par-commune.xlsx"
+  format: xlsx
+  keyColumn: "Code commune"
+  keyMatch: exact
+  maxRows: 40000
+  maxRowsPerKey: 2
+  project:
+    code: "Code commune"
+    commune: "Libellé commune"
+    departement: "Code département"
+    registered: "Inscrits"
+    voters: "Votants"
+    abstentions: "Abstentions"
+    expressed: "Exprimés"
+    blank: "Blancs"
+    spoilt: "Nuls"
+    v1: "Voix 1"
+    v2: "Voix 2"
+    v3: "Voix 3"
+    v4: "Voix 4"
+    v5: "Voix 5"
+    v6: "Voix 6"
+    v7: "Voix 7"
+    v8: "Voix 8"
+    v9: "Voix 9"
+    v10: "Voix 10"
+    v11: "Voix 11"
+    v12: "Voix 12"
+    v13: "Voix 13"
+    v14: "Voix 14"
+    v15: "Voix 15"
+    v16: "Voix 16"
+    v17: "Voix 17"
+    v18: "Voix 18"
+    v19: "Voix 19"
+    v20: "Voix 20"
+    v21: "Voix 21"
+    v22: "Voix 22"
+    v23: "Voix 23"
+    v24: "Voix 24"
+    v25: "Voix 25"
+    v26: "Voix 26"
+    v27: "Voix 27"
+    v28: "Voix 28"
+    v29: "Voix 29"
+    v30: "Voix 30"
+    v31: "Voix 31"
+    v32: "Voix 32"
+    v33: "Voix 33"
+    v34: "Voix 34"
+    v35: "Voix 35"
+    v36: "Voix 36"
+    v37: "Voix 37"
+    v38: "Voix 38"
+  # Identity is the commune code — one row per commune in the file.
+  compute: {id: 'r.code'}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}
+
+# No keyColumn: any anchor key returns the whole file — every commune, one
+# cached download — for the national views.
+- name: frEuro24All
+  kind: tabular
+  url: "https://static.data.gouv.fr/resources/resultats-des-elections-europeennes-du-9-juin-2024/20240613-155013/resultats-definitifs-par-commune.xlsx"
+  format: xlsx
+  keyAs: key
+  maxRows: 40000
+  maxRowsPerKey: 40000
+  project:
+    code: "Code commune"
+    commune: "Libellé commune"
+    departement: "Code département"
+    registered: "Inscrits"
+    voters: "Votants"
+    abstentions: "Abstentions"
+    expressed: "Exprimés"
+    blank: "Blancs"
+    spoilt: "Nuls"
+    v1: "Voix 1"
+    v2: "Voix 2"
+    v3: "Voix 3"
+    v4: "Voix 4"
+    v5: "Voix 5"
+    v6: "Voix 6"
+    v7: "Voix 7"
+    v8: "Voix 8"
+    v9: "Voix 9"
+    v10: "Voix 10"
+    v11: "Voix 11"
+    v12: "Voix 12"
+    v13: "Voix 13"
+    v14: "Voix 14"
+    v15: "Voix 15"
+    v16: "Voix 16"
+    v17: "Voix 17"
+    v18: "Voix 18"
+    v19: "Voix 19"
+    v20: "Voix 20"
+    v21: "Voix 21"
+    v22: "Voix 22"
+    v23: "Voix 23"
+    v24: "Voix 24"
+    v25: "Voix 25"
+    v26: "Voix 26"
+    v27: "Voix 27"
+    v28: "Voix 28"
+    v29: "Voix 29"
+    v30: "Voix 30"
+    v31: "Voix 31"
+    v32: "Voix 32"
+    v33: "Voix 33"
+    v34: "Voix 34"
+    v35: "Voix 35"
+    v36: "Voix 36"
+    v37: "Voix 37"
+    v38: "Voix 38"
+  # Identity is the commune code — one row per commune in the file.
+  compute: {id: 'r.code'}
+  fileCacheSeconds: 604800
+  cache: {kind: ttl, seconds: 604800}

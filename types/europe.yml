@@ -1,0 +1,38 @@
+# ── France and its neighbours, on one European yardstick (Eurostat) ──────────
+- name: EuRegion
+  description: "Any European NUTS region by code, literal-seeded — MATCH (r:EuRegion {code:'FRF11'}) — or several at once with WHERE r.code IN ['FRF11','DE134']. A French departement is NUTS 3 (Bas-Rhin FRF11), a German Kreis NUTS 3 (Ortenaukreis DE134), a Swiss canton NUTS 3 (Basel-Stadt CH031), Luxembourg LU000; the NUTS 2 parent is the first four characters (FRF1 Alsace). Joins to its Eurostat series (HAS_GDP_PPS, HAS_GDP_EUR, HAS_POPULATION, HAS_DENSITY, HAS_MEDIAN_AGE at NUTS 3; HAS_UNEMPLOYMENT, HAS_YOUTH_UNEMPLOYMENT, HAS_LIFE_EXPECTANCY, HAS_HOUSEHOLD_INCOME at NUTS 2) and its name (HAS_NAME). Nothing persisted."
+  properties:
+    code: { type: string, description: "NUTS 2024 code." }
+
+- name: EuRegionStat
+  description: "One year of one Eurostat regional indicator for one NUTS region, since 2012 — the same definition in every country, which is what makes a cross-border comparison honest. Indicators by relationship from (r:EuRegion {code}): HAS_GDP_PPS GDP per inhabitant in purchasing power standards (NUTS 3); HAS_GDP_EUR GDP per inhabitant, euros (NUTS 3); HAS_POPULATION population on 1 January (NUTS 3); HAS_DENSITY persons per km2 (NUTS 3); HAS_MEDIAN_AGE median age, years (NUTS 3); HAS_UNEMPLOYMENT unemployment rate 15-74, % (Labour Force Survey, NUTS 2); HAS_YOUTH_UNEMPLOYMENT unemployment rate 15-24, % (NUTS 2); HAS_LIFE_EXPECTANCY life expectancy at birth, years (NUTS 2); HAS_HOUSEHOLD_INCOME disposable household income per inhabitant, PPS (NUTS 2). A NUTS 2 indicator asked of a NUTS 3 code returns nothing — ask the parent. GDP is counted where it is PRODUCED: a region whose residents commute out (Moselle into Luxembourg) shows low GDP per head while its households are not poor — read it beside household income. flag: 'p' provisional, 'e' estimated, 'b' break in series."
+  virtualJoins:
+    - { anchorLabel: EuRegion, relationship: HAS_GDP_PPS, keyField: code, recordKeyField: geo, producer: euGdpPps, maxAnchors: 200, description: "GDP per inhabitant, PPS." }
+    - { anchorLabel: EuRegion, relationship: HAS_GDP_EUR, keyField: code, recordKeyField: geo, producer: euGdpEur, maxAnchors: 200, description: "GDP per inhabitant, EUR." }
+    - { anchorLabel: EuRegion, relationship: HAS_POPULATION, keyField: code, recordKeyField: geo, producer: euPopulation, maxAnchors: 200, description: "Population on 1 January." }
+    - { anchorLabel: EuRegion, relationship: HAS_DENSITY, keyField: code, recordKeyField: geo, producer: euDensity, maxAnchors: 200, description: "Persons per km2." }
+    - { anchorLabel: EuRegion, relationship: HAS_MEDIAN_AGE, keyField: code, recordKeyField: geo, producer: euMedianAge, maxAnchors: 200, description: "Median age." }
+    - { anchorLabel: EuRegion, relationship: HAS_UNEMPLOYMENT, keyField: code, recordKeyField: geo, producer: euUnemployment, maxAnchors: 200, description: "Unemployment rate 15-74 (NUTS 2)." }
+    - { anchorLabel: EuRegion, relationship: HAS_YOUTH_UNEMPLOYMENT, keyField: code, recordKeyField: geo, producer: euYouthUnemployment, maxAnchors: 200, description: "Unemployment rate 15-24 (NUTS 2)." }
+    - { anchorLabel: EuRegion, relationship: HAS_LIFE_EXPECTANCY, keyField: code, recordKeyField: geo, producer: euLifeExpectancy, maxAnchors: 200, description: "Life expectancy at birth (NUTS 2)." }
+    - { anchorLabel: EuRegion, relationship: HAS_HOUSEHOLD_INCOME, keyField: code, recordKeyField: geo, producer: euHouseholdIncome, maxAnchors: 200, description: "Disposable household income per inhabitant, PPS (NUTS 2)." }
+  properties:
+    id: { type: string, description: "indicator:geo:year. Identity.", metadata: { identity: "true" } }
+    indicator: { type: string, description: "gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, lifeExpectancy or householdIncome." }
+    geo: { type: string, description: "NUTS code." }
+    year: { type: string, description: "Reference year." }
+    value: { type: number, description: "The figure." }
+    flag: { type: string, description: "Eurostat observation flag: p provisional, e estimated, b break; empty when final." }
+    dataset: { type: string, description: "Eurostat dataflow, e.g. 'ESTAT:NAMA_10R_3GDP(1.0)'." }
+    unit: { type: string, description: "Eurostat unit code." }
+
+- name: EuRegionName
+  description: "A NUTS region's official name and country (NUTS 2024, Eurostat GISCO) — via (r:EuRegion {code})-[:HAS_NAME]->(n)."
+  virtualJoins:
+    - { anchorLabel: EuRegion, relationship: HAS_NAME, keyField: code, recordKeyField: code, producer: euRegionNames, maxAnchors: 200, description: "One row per region." }
+  properties:
+    id: { type: string, description: "The NUTS code. Identity.", metadata: { identity: "true" } }
+    code: { type: string, description: "NUTS code." }
+    name: { type: string, description: "Name in the national language(s), e.g. 'Valais / Wallis'." }
+    latinName: { type: string, description: "Name in Latin script." }
+    country: { type: string, description: "Two-letter country code (EL = Greece, UK = United Kingdom in Eurostat usage)." }

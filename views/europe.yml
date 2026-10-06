@@ -1,0 +1,70 @@
+# ── France and its neighbours, region by region (Eurostat) ──────────────────
+# One view, every border: the catalogue below is reference data — which French
+# departements face which foreign regions — and lives here once. Each region is
+# a literal-seeded EuRegion, its NUTS 2 parent is a row of its own, and
+# every indicator is a keyed read of a cached Eurostat file: ~80 regions, ~2 s
+# warm. Country rows (FR, DE, CH, …) ride along as the yardstick for each side.
+#
+# Every NUTS 3 region brings its NUTS 2 parent as a row of its own: the
+# labour-market, life-expectancy and income series are measured THERE (Alsace,
+# not Bas-Rhin), and a row per level says so instead of copying the parent's
+# figure onto each departement.
+#
+# Eurostat publishes no NUTS 3 GDP and no household income for Switzerland, so
+# those cells are empty for Swiss rows — absent, never zero.
+
+- name: EuBorderRegions
+  description: "France against its neighbours on ONE European yardstick (Eurostat, same definitions in every country): for each French border — 'rhin-nord' (Bas-Rhin / Baden and Palatinate), 'rhin-sud' (Haut-Rhin / Freiburg, Basel), 'sarre-lorraine-lux' (Moselle, Meurthe-et-Moselle, Meuse / Saarland, Luxembourg, Belgian Luxembourg), 'flandre-hainaut' (Nord / West Flanders, Hainaut), 'ardennes' (Ardennes / Namur, Belgian Luxembourg), 'jura' (Doubs, Jura / Neuchatel, Jura, Vaud), 'leman' (Haute-Savoie, Ain / Geneva, Vaud, Valais), 'alpes' (Savoie, Hautes-Alpes, Alpes-de-Haute-Provence, Alpes-Maritimes / Aosta, Turin, Cuneo, Imperia), 'pyrenees' (Pyrenees departements / Gipuzkoa, Navarre, Huesca, Lleida, Girona) — every region on each side plus the national totals, with its full yearly series since 2012 and its latest value for: GDP per inhabitant in PPS and in euros, population, density and median age (NUTS 3); unemployment 15-74 and 15-24, life expectancy at birth and disposable household income per head in PPS (NUTS 2 only — these sit on the parent region's OWN row: every NUTS 3 row names its parent, and each parent, e.g. FRF1 Alsace or DE13 Freiburg, is a row with level 2). GDP is counted where it is PRODUCED: a region whose residents commute out (Moselle into Luxembourg, Haute-Savoie into Geneva) shows low GDP per head while its households are not poor — read it beside household income. Eurostat publishes no NUTS 3 GDP and no household income for Switzerland. side is 'fr', 'neighbour' or 'country'; level is 3 (departement, Kreis, canton), 2 (its parent region) or 0 (the country)."
+  params:
+    border: { type: string, default: "all", description: "A border id ('rhin-nord', 'rhin-sud', 'sarre-lorraine-lux', 'flandre-hainaut', 'ardennes', 'jura', 'leman', 'alpes', 'pyrenees') or 'all'." }
+  cypher: |
+    WITH [
+      {id: 'rhin-nord', fr: ['FRF11'], other: ['DE134', 'DE121', 'DE124', 'DE123', 'DE122', 'DEB3E', 'DEB3H', 'DEB3K'], countries: ['FR', 'DE']},
+      {id: 'rhin-sud', fr: ['FRF12'], other: ['DE131', 'DE132', 'DE133', 'DE139', 'CH031', 'CH032'], countries: ['FR', 'DE', 'CH']},
+      {id: 'sarre-lorraine-lux', fr: ['FRF33', 'FRF31', 'FRF32'], other: ['DEC01', 'DEC02', 'DEC04', 'DEC05', 'LU000', 'BE341', 'BE345'], countries: ['FR', 'DE', 'LU', 'BE']},
+      {id: 'flandre-hainaut', fr: ['FRE11'], other: ['BE258', 'BE253', 'BE254', 'BE328', 'BE32D'], countries: ['FR', 'BE']},
+      {id: 'ardennes', fr: ['FRF21'], other: ['BE353', 'BE351', 'BE344'], countries: ['FR', 'BE']},
+      {id: 'jura', fr: ['FRC21', 'FRC22'], other: ['CH024', 'CH025', 'CH011'], countries: ['FR', 'CH']},
+      {id: 'leman', fr: ['FRK28', 'FRK21'], other: ['CH013', 'CH011', 'CH012'], countries: ['FR', 'CH']},
+      {id: 'alpes', fr: ['FRK27', 'FRL02', 'FRL01', 'FRL03'], other: ['ITC20', 'ITC11', 'ITC16', 'ITC31'], countries: ['FR', 'IT']},
+      {id: 'pyrenees', fr: ['FRI15', 'FRJ26', 'FRJ23', 'FRJ21', 'FRJ15'], other: ['ES212', 'ES220', 'ES241', 'ES513', 'ES512'], countries: ['FR', 'ES']}
+    ] AS borders
+    UNWIND borders AS b
+    WITH b WHERE $border = 'all' OR b.id = $border
+    UNWIND [x IN b.fr | {code: x, side: 'fr'}] + [x IN b.other | {code: x, side: 'neighbour'}]
+         + [x IN b.countries | {code: x, side: 'country'}] AS m
+    WITH b.id AS border, m.code AS code, m.side AS side
+    WITH border, side, collect(code) AS codes
+    UNWIND codes + [c IN codes WHERE size(c) = 5 | substring(c, 0, 4)] AS code
+    WITH DISTINCT border, side, code
+    MATCH (r:EuRegion {code: code})
+    OPTIONAL MATCH (r)-[:HAS_NAME]->(n:EuRegionName)
+    WITH border, side, code, r, head(collect(n.name)) AS name
+    OPTIONAL MATCH (r)-[:HAS_GDP_PPS]->(s1:EuRegionStat)
+    WITH border, side, code, r, name, [x IN collect({year: s1.year, value: s1.value, flag: s1.flag}) WHERE x.year IS NOT NULL] AS gdpPps
+    OPTIONAL MATCH (r)-[:HAS_GDP_EUR]->(s2:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, [x IN collect({year: s2.year, value: s2.value, flag: s2.flag}) WHERE x.year IS NOT NULL] AS gdpEur
+    OPTIONAL MATCH (r)-[:HAS_POPULATION]->(s3:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, [x IN collect({year: s3.year, value: s3.value, flag: s3.flag}) WHERE x.year IS NOT NULL] AS population
+    OPTIONAL MATCH (r)-[:HAS_DENSITY]->(s4:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, population, [x IN collect({year: s4.year, value: s4.value, flag: s4.flag}) WHERE x.year IS NOT NULL] AS density
+    OPTIONAL MATCH (r)-[:HAS_MEDIAN_AGE]->(s5:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, population, density, [x IN collect({year: s5.year, value: s5.value, flag: s5.flag}) WHERE x.year IS NOT NULL] AS medianAge
+    OPTIONAL MATCH (r)-[:HAS_UNEMPLOYMENT]->(s6:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, population, density, medianAge, [x IN collect({year: s6.year, value: s6.value, flag: s6.flag}) WHERE x.year IS NOT NULL] AS unemployment
+    OPTIONAL MATCH (r)-[:HAS_YOUTH_UNEMPLOYMENT]->(s7:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, population, density, medianAge, unemployment, [x IN collect({year: s7.year, value: s7.value, flag: s7.flag}) WHERE x.year IS NOT NULL] AS youthUnemployment
+    OPTIONAL MATCH (r)-[:HAS_LIFE_EXPECTANCY]->(s8:EuRegionStat)
+    WITH border, side, code, r, name, gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, [x IN collect({year: s8.year, value: s8.value, flag: s8.flag}) WHERE x.year IS NOT NULL] AS lifeExpectancy
+    OPTIONAL MATCH (r)-[:HAS_HOUSEHOLD_INCOME]->(s9:EuRegionStat)
+    WITH border, side, code, name, gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, lifeExpectancy, [x IN collect({year: s9.year, value: s9.value, flag: s9.flag}) WHERE x.year IS NOT NULL] AS householdIncome
+    WITH border, side, code, name,
+         {gdpPps: gdpPps, gdpEur: gdpEur, population: population, density: density, medianAge: medianAge,
+          unemployment: unemployment, youthUnemployment: youthUnemployment, lifeExpectancy: lifeExpectancy,
+          householdIncome: householdIncome} AS series
+    RETURN border, side, code, CASE size(code) WHEN 5 THEN 3 WHEN 4 THEN 2 ELSE 0 END AS level,
+           CASE WHEN size(code) = 5 THEN substring(code, 0, 4) END AS parent,
+           substring(code, 0, 2) AS country, name, series,
+           [k IN keys(series) | {indicator: k,
+              latest: head([x IN series[k] WHERE x.year = reduce(m = '', y IN series[k] | CASE WHEN y.year > m THEN y.year ELSE m END)])}] AS latest
+    ORDER BY border, CASE side WHEN 'fr' THEN 0 WHEN 'neighbour' THEN 1 ELSE 2 END, level DESC, code

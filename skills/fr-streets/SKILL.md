@@ -18,6 +18,9 @@ description: Watch French places and answer questions about them and about Franc
 | What predicts X across departements? | `FrDepartementModel` (+ switches incl. inequality), `FrDepartementPredictorsOneByOne`, `FrDepartementRows` |
 | What predicts X across communes? | `FrWhatBestPredictsCrime`, `FrCrimePredictorsOneByOne`, `FrCommunesRanked`, `FrModelRows` |
 | Who represents it | `FrDeputiesAtMyPlaces`, mayor in the dossier |
+| France against its neighbours | `EuBorderRegions` (border or 'all') — regions both sides, their NUTS 2 parents, countries |
+| How a commune voted in the 2024 European election | `(c:FrCommune {code})-[:HAS_EURO24]->(v:FrEuroVote)` — share of list N = vN / expressed |
+| Census unemployment, qualifications | `(m:FrMelodiPlace {geo})-[:HAS_WORK]->(w:FrWork)`, `-[:HAS_EDUCATION]->(e:FrEducation)` |
 
 Indicators are the SSMSI's French labels, verbatim — e.g. `Cambriolages de logement` (burglary),
 `Violences physiques hors cadre familial`, `Vols violents sans arme`, `Trafic de stupéfiants`.
@@ -46,3 +49,10 @@ Resolve to the INSEE code — never key on the postal code (01400 covers 10 comm
   has no ethnic statistics. At departement level, with ~96 rows and correlated predictors, betas
   are noisy: report the pattern and the solo-vs-together contrast, not second decimals.
 - No street-level or point crime exists in French open data; don't imply it.
+- Election lists are named by their panel number, the ministry's own title and its nuance code
+  (5 LRN, 27 LUG, 11 LENS…). Never group lists into blocs or attach an ideological label the
+  ministry's file does not carry; if a question needs a sum of lists, say which lists, by name.
+- Across a border, quote Eurostat's level honestly: unemployment, life expectancy and household
+  income are NUTS 2 (Alsace, not Bas-Rhin). GDP per head is counted where it is produced — a
+  commuter departement (Moselle, Haute-Savoie) looks poorer on GDP than its households are.
+  Eurostat has no regional GDP or household income for Switzerland: say "not published".

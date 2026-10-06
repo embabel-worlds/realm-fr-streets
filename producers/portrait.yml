@@ -8,7 +8,6 @@
   format: csv
   keyColumn: code_geo
   keyMatch: exact
-  rowIdAs: id
   maxRows: 600000
   maxRowsPerKey: 5
   project:
@@ -24,6 +23,8 @@
     houseMeanM2: moy_prix_m2_whole_maison
     allSales: nb_ventes_whole_apt_maison
     allMedianM2: med_prix_m2_whole_apt_maison
+  # Identity is scale + code (a code repeats across scales: region 11 vs departement 11).
+  compute: {id: 'r.scale + '':'' + r.code'}
   fileCacheSeconds: 604800
   cache: {kind: ttl, seconds: 604800}
 
@@ -33,7 +34,6 @@
   format: csv
   keyColumn: echelle_geo
   keyMatch: exact
-  rowIdAs: id
   maxRows: 600000
   maxRowsPerKey: 45000
   project:
@@ -49,6 +49,8 @@
     houseMeanM2: moy_prix_m2_whole_maison
     allSales: nb_ventes_whole_apt_maison
     allMedianM2: med_prix_m2_whole_apt_maison
+  # Identity is scale + code (a code repeats across scales: region 11 vs departement 11).
+  compute: {id: 'r.scale + '':'' + r.code'}
   fileCacheSeconds: 604800
   cache: {kind: ttl, seconds: 604800}
 
