@@ -43,6 +43,8 @@ No API keys and no accounts: the realm works the moment it is installed.
 - **Se loger en France** — "where can I buy with my budget", years of income per département, price-against-income scatter of ~3,000 towns, every commune sortable.
 - **What predicts crime in France?** — switchable-predictor model across communes, refitted in the browser, with a check against the engine's own `regress()`.
 
+Every app is bilingual: it opens in French, and an FR / EN switch at the top right changes the language (the choice is remembered in the browser). The commune portrait opens on Strasbourg. Strasbourg, like the rest of Alsace-Moselle (57, 67, 68), has no DVF property prices because sales there are recorded in the Livre foncier, and the app says so instead of showing a blank.
+
 Apps are separate artifacts on an Embabel world (`vibe_app_save`); the HTML here is the source of each.
 
 ## Honest limits

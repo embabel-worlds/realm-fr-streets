@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Se loger en France</title>
-<meta name="description" content="Prix de l'immobilier contre revenus locaux dans toute la France : où acheter avec votre budget, combien d'années de revenu coûte un 70 m² dans chaque département et chaque commune, nuage prix/revenus de 3 000 villes — en direct depuis DVF et l'INSEE.">
+<meta name="description" content="Prix de l'immobilier contre revenus locaux dans toute la France (français / English) : où acheter avec votre budget, combien d'années de revenu coûte un 70 m² dans chaque département et chaque commune, nuage prix/revenus de 3 000 villes — en direct depuis DVF et l'INSEE.">
 <link rel="stylesheet" href="/api/v1/apps-runtime/v1/theme.css">
 <script src="/api/v1/apps-runtime/v1/embabel.js"></script>
 <script src="/api/v1/apps-runtime/gateway.js"></script>
@@ -16,7 +16,12 @@
           --green:#3fd73c; --dim:#6b7280; --text:#e5e7eb; --red:#f2726f; --bleu:#4f7cff; --rouge:#ef4444; --gold:#e8b04b; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.45; }
+  body.lang-fr .en, body.lang-en .fr { display:none !important; }
   main { max-width:1160px; margin:0 auto; padding:28px 16px 90px; }
+  .top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+  .lang { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; flex:none; }
+  .lang button { background:none; border:0; color:var(--dim); padding:5px 12px; font:inherit; font-size:0.82rem; cursor:pointer; }
+  .lang button.on { background:var(--cyan); color:#04121c; font-weight:600; }
   h1 { margin:0; font-size:1.9rem; letter-spacing:-0.02em; }
   .lede { color:var(--dim); margin:6px 0 18px; max-width:760px; }
   .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:14px; }
@@ -58,131 +63,235 @@
   a { color:var(--cyan); }
 </style>
 </head>
-<body>
+<body class="lang-fr">
 <main>
-  <h1>🏠 Se loger en France</h1>
-  <p class="lede">Ce que coûte un logement, commune par commune, comparé à ce que gagnent les habitants. Toutes les ventes notariées des cinq dernières années (DVF) face aux revenus de l'INSEE — en direct.</p>
+  <div class="top">
+    <h1>🏠 <span class="fr">Se loger en France</span><span class="en">Housing in France</span></h1>
+    <div class="lang" role="group" aria-label="Langue / Language"><button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button></div>
+  </div>
+  <p class="lede">
+    <span class="fr">Ce que coûte un logement, commune par commune, comparé à ce que gagnent les habitants. Toutes les ventes notariées des cinq dernières années (DVF) face aux revenus de l'INSEE — en direct.</span>
+    <span class="en">What a home costs, commune by commune, against what the people who live there earn. Every notarised sale of the last five years (DVF) against INSEE incomes — live.</span>
+  </p>
 
   <div class="grid">
-    <div class="card c3"><h3>France — appartements</h3><div class="big" id="k-flat">…</div><div class="sub">prix médian au m²</div></div>
-    <div class="card c3"><h3>France — maisons</h3><div class="big" id="k-house">…</div><div class="sub">prix médian au m²</div></div>
-    <div class="card c3"><h3>Un 70 m² en France</h3><div class="big gold" id="k-years">…</div><div class="sub">années de niveau de vie médian</div></div>
-    <div class="card c3"><h3>Le grand écart</h3><div class="big" id="k-gap">…</div><div class="sub" id="k-gap-sub">entre la commune la plus chère et la moins chère</div></div>
+    <div class="card c3"><h3><span class="fr">France — appartements</span><span class="en">France — flats</span></h3><div class="big" id="k-flat">…</div><div class="sub"><span class="fr">prix médian au m²</span><span class="en">median price per m²</span></div></div>
+    <div class="card c3"><h3><span class="fr">France — maisons</span><span class="en">France — houses</span></h3><div class="big" id="k-house">…</div><div class="sub"><span class="fr">prix médian au m²</span><span class="en">median price per m²</span></div></div>
+    <div class="card c3"><h3><span class="fr">Un 70 m² en France</span><span class="en">A 70 m² flat in France</span></h3><div class="big gold" id="k-years">…</div><div class="sub"><span class="fr">années de niveau de vie médian</span><span class="en">years of median standard of living</span></div></div>
+    <div class="card c3"><h3><span class="fr">Le grand écart</span><span class="en">The great divide</span></h3><div class="big" id="k-gap">…</div><div class="sub" id="k-gap-sub"></div></div>
 
     <div class="card c12">
-      <h3>Mon budget : où puis-je acheter ?</h3>
+      <h3><span class="fr">Mon budget : où puis-je acheter ?</span><span class="en">My budget: where can I buy?</span></h3>
       <div class="row">
-        <label class="f">Budget (€)<input id="b-budget" type="number" value="250000" step="10000" min="10000"></label>
-        <label class="f">Surface (m²)<input id="b-surf" type="number" value="70" step="5" min="10"></label>
-        <label class="f">Type<select id="b-type"><option value="flat">Appartement</option><option value="house">Maison</option></select></label>
-        <label class="f">Département<select id="b-dep"><option value="">Toute la France</option></select></label>
-        <label class="f">Classer par<select id="b-sort"><option value="income">Revenu des habitants (le plus élevé)</option><option value="price">Prix (le plus cher qui reste dans le budget)</option><option value="sales">Taille du marché (nombre de ventes)</option></select></label>
+        <label class="f"><span class="fr">Budget (€)</span><span class="en">Budget (€)</span><input id="b-budget" type="number" value="250000" step="10000" min="10000"></label>
+        <label class="f"><span class="fr">Surface (m²)</span><span class="en">Floor area (m²)</span><input id="b-surf" type="number" value="70" step="5" min="10"></label>
+        <label class="f"><span class="fr">Type</span><span class="en">Type</span><select id="b-type"><option value="flat"></option><option value="house"></option></select></label>
+        <label class="f"><span class="fr">Département</span><span class="en">Département</span><select id="b-dep"><option value=""></option></select></label>
+        <label class="f"><span class="fr">Classer par</span><span class="en">Sort by</span><select id="b-sort"><option value="income"></option><option value="price"></option><option value="sales"></option></select></label>
       </div>
-      <div id="b-state" class="state busy">Chargement des 16 000 communes…</div>
-      <div class="scroll"><table id="b-table" hidden><thead><tr><th>Commune</th><th>Dép.</th><th class="n">€/m²</th><th class="n">Prix du bien</th><th class="n">Ventes</th><th class="n">Niveau de vie médian</th><th class="n">Pauvreté</th></tr></thead><tbody></tbody></table></div>
+      <div id="b-state" class="state busy"></div>
+      <div class="scroll"><table id="b-table" hidden><thead><tr>
+        <th>Commune</th><th><span class="fr">Dép.</span><span class="en">Dept.</span></th><th class="n">€/m²</th>
+        <th class="n"><span class="fr">Prix du bien</span><span class="en">Property price</span></th><th class="n"><span class="fr">Ventes</span><span class="en">Sales</span></th>
+        <th class="n"><span class="fr">Niveau de vie médian</span><span class="en">Median standard of living</span></th><th class="n"><span class="fr">Pauvreté</span><span class="en">Poverty</span></th>
+      </tr></thead><tbody></tbody></table></div>
     </div>
 
     <div class="card c5">
-      <h3>Années de revenu pour un 70 m², par département</h3>
-      <div class="sub" style="margin-bottom:8px">Cliquez un département pour filtrer le budget et le tableau.</div>
-      <div id="d-state" class="state busy">Chargement…</div>
+      <h3><span class="fr">Années de revenu pour un 70 m², par département</span><span class="en">Years of income for 70 m², by département</span></h3>
+      <div class="sub" style="margin-bottom:8px"><span class="fr">Cliquez un département pour filtrer le budget et le tableau.</span><span class="en">Click a département to filter the budget and the table.</span></div>
+      <div id="d-state" class="state busy"></div>
       <div class="scroll" id="d-bars"></div>
     </div>
     <div class="card c7">
-      <h3>Prix au m² contre revenus — <span id="s-n"></span></h3>
-      <div class="sub" style="margin-bottom:6px">Chaque point est une commune (appartements, ≥ 30 ventes). Les lignes pointillées marquent 5, 10 et 20 années de revenu pour 70 m². Cliquez un point pour ouvrir son portrait.</div>
-      <div id="s-state" class="state busy">Chargement…</div>
-      <svg id="scatter" viewBox="0 0 700 420" width="100%" role="img" aria-label="Nuage de points prix au m² contre niveau de vie"></svg>
+      <h3><span class="fr">Prix au m² contre revenus</span><span class="en">Price per m² against income</span> — <span id="s-n"></span></h3>
+      <div class="sub" style="margin-bottom:6px">
+        <span class="fr">Chaque point est une commune (appartements, ≥ 30 ventes). Les lignes pointillées marquent 5, 10 et 20 années de revenu pour 70 m². Cliquez un point pour ouvrir son portrait.</span>
+        <span class="en">Each dot is a commune (flats, ≥ 30 sales). Dashed lines mark 5, 10 and 20 years of income for 70 m². Click a dot to open its portrait.</span>
+      </div>
+      <div id="s-state" class="state busy"></div>
+      <svg id="scatter" viewBox="0 0 700 420" width="100%" role="img"></svg>
     </div>
 
     <div class="card c12">
-      <h3>Toutes les communes <span class="pill" id="t-count"></span></h3>
+      <h3><span class="fr">Toutes les communes</span><span class="en">Every commune</span> <span class="pill" id="t-count"></span></h3>
       <div class="row" style="margin-bottom:8px">
-        <input id="t-find" type="search" placeholder="Chercher une commune…" style="min-width:260px">
-        <span class="sub">Cliquez un en-tête pour trier.</span>
+        <input id="t-find" type="search" style="min-width:260px">
+        <span class="sub"><span class="fr">Cliquez un en-tête pour trier.</span><span class="en">Click a heading to sort.</span></span>
       </div>
       <div class="scroll"><table id="t-table"><thead><tr>
-        <th data-k="commune">Commune</th><th data-k="departement">Dép.</th>
-        <th class="n" data-k="flatMedianM2">Appart. €/m²</th><th class="n" data-k="houseMedianM2">Maison €/m²</th>
-        <th class="n" data-k="medianIncome">Niveau de vie</th><th class="n" data-k="povertyRate">Pauvreté</th>
-        <th class="n" data-k="yearsFlat70m2">Années 70 m²</th><th class="n" data-k="yearsHouse100m2">Années maison 100 m²</th>
+        <th data-k="commune">Commune</th><th data-k="departement"><span class="fr" data-k="departement">Dép.</span><span class="en" data-k="departement">Dept.</span></th>
+        <th class="n" data-k="flatMedianM2"><span class="fr" data-k="flatMedianM2">Appart. €/m²</span><span class="en" data-k="flatMedianM2">Flat €/m²</span></th>
+        <th class="n" data-k="houseMedianM2"><span class="fr" data-k="houseMedianM2">Maison €/m²</span><span class="en" data-k="houseMedianM2">House €/m²</span></th>
+        <th class="n" data-k="medianIncome"><span class="fr" data-k="medianIncome">Niveau de vie</span><span class="en" data-k="medianIncome">Standard of living</span></th>
+        <th class="n" data-k="povertyRate"><span class="fr" data-k="povertyRate">Pauvreté</span><span class="en" data-k="povertyRate">Poverty</span></th>
+        <th class="n" data-k="yearsFlat70m2"><span class="fr" data-k="yearsFlat70m2">Années 70 m²</span><span class="en" data-k="yearsFlat70m2">Years 70 m²</span></th>
+        <th class="n" data-k="yearsHouse100m2"><span class="fr" data-k="yearsHouse100m2">Années maison 100 m²</span><span class="en" data-k="yearsHouse100m2">Years house 100 m²</span></th>
       </tr></thead><tbody></tbody></table></div>
     </div>
   </div>
 
   <section id="how-it-works" class="card">
-    <h2 style="margin-top:0">Comment ça marche</h2>
-    <h4>1. Les données</h4>
-    <ul>
-      <li><b>Prix</b> : statistiques DVF d'Etalab — nombre de ventes et prix médian au m² de toutes les ventes notariées des 10 derniers semestres, par commune et par département. Hors Alsace-Moselle et Mayotte (absents de DVF) ; Paris, Lyon et Marseille sont publiés par arrondissement. Mis en cache une semaine.</li>
-      <li><b>Revenus</b> : INSEE Filosofi 2023 — niveau de vie médian (revenu disponible par unité de consommation) et taux de pauvreté. Mis en cache une semaine.</li>
-    </ul>
-    <h4>2. Les questions</h4>
-    <ul>
-      <li><code>FrHousingAffordability</code>(minSales = 30) : chaque commune avec au moins 30 ventes d'appartements ou de maisons et un revenu publié — prix, ventes, niveau de vie, pauvreté et années de revenu. Une médiane inférieure à 300 €/m² est traitée comme une anomalie (ventes en bloc) et masquée.</li>
-      <li><code>FrDeptHousing</code>() : la même chose pour chaque département, avec les inégalités (Gini).</li>
-      <li><code>FrCommuneContext</code>(code = '75056') : utilisé ici uniquement pour ses repères nationaux (prix médians France, niveau de vie médian de la France métropolitaine).</li>
-    </ul>
-    <p>Le budget, le nuage de points, les classements et les recherches sont calculés dans la page à partir de ces lignes ; aucune requête Cypher n'est embarquée. Chaque commune renvoie vers son <a href="/apps/workspace/portrait-commune.html" target="_blank" rel="noopener noreferrer">portrait</a>.</p>
-    <h4>3. Si quelque chose semble faux</h4>
-    <ul>
-      <li>Une commune absente : trop peu de ventes (moins de 30), pas de revenu publié, ou Alsace-Moselle.</li>
-      <li>« Années de revenu » = prix médian au m² × surface ÷ niveau de vie médian d'<b>une</b> personne. Un couple compte pour 1,5 unité de consommation, donc ses années sont moindres. C'est un repère de l'écart prix/revenus, pas un calcul de crédit.</li>
-      <li>Le budget compare le prix médian au m² × votre surface à votre budget : la moitié des biens d'une commune sont moins chers que ce prix.</li>
-      <li>Les communes frontalières (Doubs, Jura, Haute-Savoie, Ain…) affichent souvent des revenus élevés : beaucoup d'habitants travaillent en Suisse.</li>
-    </ul>
-    <h4>4. Ce qui rend cela possible</h4>
-    <ul>
-      <li>Le fichier DVF (30 Mo, 505 000 lignes) et les revenus INSEE de 35 000 communes sont reliés par le code INSEE dans une seule requête, sans base de données intermédiaire.</li>
-    </ul>
+    <div class="fr">
+      <h2 style="margin-top:0">Comment ça marche</h2>
+      <h4>1. Les données</h4>
+      <ul>
+        <li><b>Prix</b> : statistiques DVF d'Etalab — nombre de ventes et prix médian au m² de toutes les ventes notariées des 10 derniers semestres, par commune et par département. Hors Alsace-Moselle (Livre foncier, droit local) et Mayotte ; Paris, Lyon et Marseille sont publiés par arrondissement. Mis en cache une semaine.</li>
+        <li><b>Revenus</b> : INSEE Filosofi 2023 — niveau de vie médian (revenu disponible par unité de consommation) et taux de pauvreté. Mis en cache une semaine.</li>
+      </ul>
+      <h4>2. Les questions</h4>
+      <ul>
+        <li><code>FrHousingAffordability</code>(minSales = 30) : chaque commune avec au moins 30 ventes d'appartements ou de maisons et un revenu publié — prix, ventes, niveau de vie, pauvreté et années de revenu. Une médiane inférieure à 300 €/m² est traitée comme une anomalie (ventes en bloc) et masquée.</li>
+        <li><code>FrDeptHousing</code>() : la même chose pour chaque département, avec les inégalités (Gini).</li>
+        <li><code>FrCommuneContext</code>(code = '75056') : utilisé ici uniquement pour ses repères nationaux (prix médians France, niveau de vie médian de la France métropolitaine).</li>
+      </ul>
+      <p>Le budget, le nuage de points, les classements et les recherches sont calculés dans la page à partir de ces lignes ; aucune requête Cypher n'est embarquée. Chaque commune renvoie vers son <a href="/apps/workspace/portrait-commune.html" target="_blank" rel="noopener noreferrer">portrait</a>. Le choix de langue est mémorisé dans ce navigateur.</p>
+      <h4>3. Si quelque chose semble faux</h4>
+      <ul>
+        <li>Une commune absente : trop peu de ventes (moins de 30), pas de revenu publié, ou Alsace-Moselle.</li>
+        <li>« Années de revenu » = prix médian au m² × surface ÷ niveau de vie médian d'<b>une</b> personne. Un couple compte pour 1,5 unité de consommation, donc ses années sont moindres. C'est un repère de l'écart prix/revenus, pas un calcul de crédit.</li>
+        <li>Le budget compare le prix médian au m² × votre surface à votre budget : la moitié des biens d'une commune sont moins chers que ce prix.</li>
+        <li>Les communes frontalières (Doubs, Jura, Haute-Savoie, Ain…) affichent souvent des revenus élevés : beaucoup d'habitants travaillent en Suisse.</li>
+      </ul>
+      <h4>4. Ce qui rend cela possible</h4>
+      <ul><li>Le fichier DVF (30 Mo, 505 000 lignes) et les revenus INSEE de 35 000 communes sont reliés par le code INSEE dans une seule requête, sans base de données intermédiaire.</li></ul>
+    </div>
+    <div class="en">
+      <h2 style="margin-top:0">How it works</h2>
+      <h4>1. The data</h4>
+      <ul>
+        <li><b>Prices</b>: Etalab's DVF statistics — number of sales and median price per m² of every notarised sale over the last 10 half-years, by commune and by département. Excludes Alsace-Moselle (Livre foncier, local law) and Mayotte; Paris, Lyon and Marseille are published per arrondissement. Cached for a week.</li>
+        <li><b>Income</b>: INSEE Filosofi 2023 — median standard of living (disposable income per consumption unit) and poverty rate. Cached for a week.</li>
+      </ul>
+      <h4>2. The questions</h4>
+      <ul>
+        <li><code>FrHousingAffordability</code>(minSales = 30): every commune with at least 30 flat or house sales and a published income — prices, sales, standard of living, poverty and years of income. A median below €300/m² is treated as an anomaly (bulk sales) and blanked.</li>
+        <li><code>FrDeptHousing</code>(): the same for every département, with inequality (Gini).</li>
+        <li><code>FrCommuneContext</code>(code = '75056'): used here only for its national yardsticks (France's median prices, metropolitan France's median standard of living).</li>
+      </ul>
+      <p>The budget tool, scatter chart, rankings and searches are computed in the page from those rows; no Cypher is embedded. Every commune links to its <a href="/apps/workspace/portrait-commune.html" target="_blank" rel="noopener noreferrer">portrait</a>. Your language choice is remembered in this browser.</p>
+      <h4>3. When something looks wrong</h4>
+      <ul>
+        <li>A missing commune: too few sales (under 30), no published income, or Alsace-Moselle.</li>
+        <li>"Years of income" = median price per m² × floor area ÷ the median standard of living of <b>one</b> person. A couple counts as 1.5 consumption units, so their years are fewer. It is a yardstick of the price/income gap, not a mortgage calculation.</li>
+        <li>The budget compares the median price per m² × your floor area with your budget: half the homes in a commune sell below that price.</li>
+        <li>Border communes (Doubs, Jura, Haute-Savoie, Ain…) often show high incomes: many residents work in Switzerland.</li>
+      </ul>
+      <h4>4. What made this possible</h4>
+      <ul><li>The DVF file (30 MB, 505,000 rows) and INSEE incomes for 35,000 communes are joined on the INSEE code in a single query, with no intermediate database.</li></ul>
+    </div>
   </section>
-  <footer><a href="#" id="hiw-link">Comment ça marche</a></footer>
+  <footer><a href="#" id="hiw-link"><span class="fr">Comment ça marche</span><span class="en">How it works</span></a></footer>
 </main>
 <div id="tip"></div>
 
 <script>
 const $ = (id) => document.getElementById(id);
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
+
+/* ── language ───────────────────────────────────────────────────────── */
+const LANG_KEY = 'fr-streets-lang';
+let LANG = 'fr';
+try { const saved = localStorage.getItem(LANG_KEY); if (saved === 'en' || saved === 'fr') LANG = saved; } catch (e) { /* storage blocked: default French */ }
+const T = {
+  fr: {
+    flat: 'Appartement', house: 'Maison', allFrance: 'Toute la France', byIncome: 'Revenu des habitants (le plus élevé)',
+    byPrice: 'Prix (le plus cher qui reste dans le budget)', bySales: 'Taille du marché (nombre de ventes)',
+    loadingCommunes: 'Chargement des 16 000 communes…', loading: 'Chargement…', find: 'Chercher une commune…',
+    scatterAria: 'Nuage de points prix au m² contre niveau de vie', years: ' ans', communes: ' communes',
+    gapSub: 'entre la commune la plus chère et la moins chère', gapPill: 'appart., ≥ 100 ventes',
+    deptFail: 'Les départements n\'ont pas pu être chargés : ', communesFail: 'Les communes n\'ont pas pu être chargées : ', reload: '. Rechargez la page.',
+    noRows: 'Aucune commune renvoyée par la vue.', alsace: 'Alsace-Moselle (57, 67, 68) : pas de données DVF (Livre foncier).',
+    budgetNone: (b, s, dep, n) => `Avec ${b} pour ${s} m², aucune commune ${dep ? 'de ce département ' : ''}n'a un prix médian assez bas (${n} communes regardées).`,
+    budgetSome: (k, n, s, type, b, dep) => `${k} communes sur ${n} où ${s} m² ${type === 'flat' ? 'd\'appartement' : 'de maison'} au prix médian tiennent dans ${b}${dep ? ' — ' + dep : ''}. Les 60 premières :`,
+    tipYears: ' ans pour 70 m²', perYear: '/an', axisX: 'niveau de vie médian (€/an)', axisY: '€/m² appartements',
+    more: (n) => `… ${n} autres — affinez la recherche.`, timeout: 'délai dépassé', empty: 'réponse vide', viewFail: 'la vue a échoué', sourceFail: 'une source n\'a pas répondu : ',
+  },
+  en: {
+    flat: 'Flat', house: 'House', allFrance: 'All of France', byIncome: 'Residents\' income (highest)',
+    byPrice: 'Price (dearest that still fits the budget)', bySales: 'Market size (number of sales)',
+    loadingCommunes: 'Loading 16,000 communes…', loading: 'Loading…', find: 'Find a commune…',
+    scatterAria: 'Scatter chart of price per m² against standard of living', years: ' years', communes: ' communes',
+    gapSub: 'between the dearest and the cheapest commune', gapPill: 'flats, ≥ 100 sales',
+    deptFail: 'The départements could not be loaded: ', communesFail: 'The communes could not be loaded: ', reload: '. Reload the page.',
+    noRows: 'The view returned no communes.', alsace: 'Alsace-Moselle (57, 67, 68): no DVF data (Livre foncier).',
+    budgetNone: (b, s, dep, n) => `With ${b} for ${s} m², no commune ${dep ? 'in this département ' : ''}has a low enough median price (${n} communes checked).`,
+    budgetSome: (k, n, s, type, b, dep) => `${k} of ${n} communes where ${s} m² of ${type === 'flat' ? 'flat' : 'house'} at the median price fits within ${b}${dep ? ' — ' + dep : ''}. The first 60:`,
+    tipYears: ' years for 70 m²', perYear: '/yr', axisX: 'median standard of living (€/yr)', axisY: 'flats, €/m²',
+    more: (n) => `… ${n} more — narrow the search.`, timeout: 'timed out', empty: 'empty response', viewFail: 'the view failed', sourceFail: 'a source did not answer: ',
+  },
+};
+const t = (k) => T[LANG][k] ?? T.fr[k] ?? k;
+const loc = () => (LANG === 'fr' ? 'fr-FR' : 'en-GB');
+const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString(loc(), { maximumFractionDigits: d, minimumFractionDigits: d });
+const eur = (v) => v == null ? '—' : (LANG === 'fr' ? nf(v) + ' €' : '€' + nf(v));
+const eurM2 = (v) => v == null ? '—' : (LANG === 'fr' ? nf(v) + ' €/m²' : '€' + nf(v) + '/m²');
+const pct = (v, d = 1) => v == null ? '—' : nf(v, d) + (LANG === 'fr' ? ' %' : '%');
 function setState(el, cls, text) { el.className = 'state ' + cls; el.textContent = text; el.hidden = false; }
 const portraitLink = (code, name) => `<a href="/apps/workspace/portrait-commune.html#${encodeURIComponent(code)}" target="_blank" rel="noopener noreferrer">${escapeHtml(name)}</a>`;
 
 async function runView(name, params, ms = 150000) {
-  let t;
-  const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('délai dépassé (' + Math.round(ms / 1000) + ' s)')), ms); });
+  let tm;
+  const timeout = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('timeout') + ' (' + Math.round(ms / 1000) + ' s)')), ms); });
   try {
     const res = await Promise.race([gateway.view.run({ name, params }), timeout]);
-    if (!res || typeof res !== 'object') throw new Error('réponse vide');
-    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || 'la vue a échoué');
+    if (!res || typeof res !== 'object') throw new Error(t('empty'));
+    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || t('viewFail'));
     const bad = (res.warnings || []).filter((w) => /PRODUCER_ERROR|INCOMPLETE/.test(String(w)));
-    if (bad.length) throw new Error('une source n\'a pas répondu : ' + String(bad[0]).slice(0, 140));
+    if (bad.length) throw new Error(t('sourceFail') + String(bad[0]).slice(0, 140));
     return res.rows || [];
-  } finally { clearTimeout(t); }
+  } finally { clearTimeout(tm); }
 }
 
-const S = { communes: [], depts: [], depNames: {}, dep: '', sortK: 'yearsFlat70m2', sortDir: -1, scatterPts: [] };
+const S = { communes: [], depts: [], depNames: {}, dep: '', sortK: 'yearsFlat70m2', sortDir: -1, scatterPts: [], france: null, loaded: false, deptsLoaded: false };
+
+function applyLang() {
+  document.body.className = 'lang-' + LANG;
+  document.documentElement.lang = LANG;
+  document.title = LANG === 'fr' ? 'Se loger en France' : 'Housing in France';
+  document.querySelectorAll('.lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === LANG));
+  const ty = $('b-type').options; ty[0].text = t('flat'); ty[1].text = t('house');
+  const so = $('b-sort').options; so[0].text = t('byIncome'); so[1].text = t('byPrice'); so[2].text = t('bySales');
+  $('b-dep').options[0].text = t('allFrance');
+  $('t-find').placeholder = t('find');
+  $('scatter').setAttribute('aria-label', t('scatterAria'));
+  $('k-gap-sub').textContent = t('gapSub');
+  if (!S.loaded) { ['b-state', 's-state'].forEach((id) => { if ($(id).classList.contains('busy')) $(id).textContent = t('loadingCommunes'); }); }
+  if (!S.deptsLoaded && $('d-state').classList.contains('busy')) $('d-state').textContent = t('loading');
+  renderFrance();
+  if (S.deptsLoaded) renderDepts();
+  if (S.loaded) { renderHeadlineGap(); renderBudget(); renderScatter(); renderTable(); }
+}
+document.querySelector('.lang').addEventListener('click', (e) => {
+  const l = e.target.dataset && e.target.dataset.lang; if (!l || l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem(LANG_KEY, LANG); } catch (err) { /* not persisted; still switches */ }
+  applyLang();
+});
 
 /* ── headline ───────────────────────────────────────────────────────── */
 async function loadFrance() {
-  try {
-    const r = (await runView('FrCommuneContext', { code: '75056' }))[0] || {};
-    $('k-flat').textContent = nf(r.franceFlatMedianM2) + ' €';
-    $('k-house').textContent = nf(r.franceHouseMedianM2) + ' €';
-    $('k-years').textContent = r.franceFlatMedianM2 && r.franceMedianIncome ? nf(r.franceFlatMedianM2 * 70 / r.franceMedianIncome, 1) + ' ans' : '—';
-  } catch (e) { $('k-flat').textContent = $('k-house').textContent = $('k-years').textContent = '—'; }
+  try { S.france = (await runView('FrCommuneContext', { code: '75056' }))[0] || {}; } catch (e) { S.france = {}; }
+  renderFrance();
+}
+function renderFrance() {
+  const r = S.france; if (!r) return;
+  $('k-flat').textContent = eur(r.franceFlatMedianM2);
+  $('k-house').textContent = eur(r.franceHouseMedianM2);
+  $('k-years').textContent = r.franceFlatMedianM2 && r.franceMedianIncome ? nf(r.franceFlatMedianM2 * 70 / r.franceMedianIncome, 1) + t('years') : '—';
 }
 
 /* ── departements ───────────────────────────────────────────────────── */
 async function loadDepts() {
   try {
     const rows = await runView('FrDeptHousing', {});
-    S.depts = rows;
+    S.depts = rows; S.deptsLoaded = true;
     rows.forEach((d) => { S.depNames[d.code] = d.departement; });
     const opts = rows.slice().sort((a, b) => a.code.localeCompare(b.code)).map((d) => `<option value="${escapeHtml(d.code)}">${escapeHtml(d.code)} — ${escapeHtml(d.departement)}</option>`).join('');
     $('b-dep').insertAdjacentHTML('beforeend', opts);
     renderDepts();
     $('d-state').hidden = true;
-  } catch (e) { setState($('d-state'), 'err', 'Les départements n\'ont pas pu être chargés : ' + e.message); }
+  } catch (e) { setState($('d-state'), 'err', t('deptFail') + e.message); }
 }
 function colorFor(y) { return y > 12 ? 'var(--rouge)' : y > 8 ? 'var(--gold)' : y > 5 ? 'var(--cyan)' : 'var(--green)'; }
 function renderDepts() {
@@ -192,7 +301,7 @@ function renderDepts() {
       <span>${escapeHtml(d.code)} ${escapeHtml(d.departement)}</span>
       <div class="track"><div class="fill" style="width:${(100 * d.yearsFlat70m2 / max).toFixed(1)}%;background:${colorFor(d.yearsFlat70m2)}"></div></div>
       <span class="v">${nf(d.yearsFlat70m2, 1)}</span></div>`).join('')
-    + '<div class="sub" style="margin-top:8px">Alsace-Moselle (57, 67, 68) : pas de données DVF.</div>';
+    + `<div class="sub" style="margin-top:8px">${escapeHtml(t('alsace'))}</div>`;
 }
 $('d-bars').addEventListener('click', (e) => {
   const el = e.target.closest('.dbar'); if (!el) return;
@@ -205,12 +314,11 @@ $('d-bars').addEventListener('click', (e) => {
 async function loadCommunes() {
   try {
     const rows = await runView('FrHousingAffordability', { minSales: 30 });
-    S.communes = rows;
-    $('t-count').textContent = nf(rows.length) + ' communes';
-    if (!rows.length) { ['b-state', 's-state'].forEach((id) => setState($(id), '', 'Aucune commune renvoyée par la vue.')); return; }
+    S.communes = rows; S.loaded = true;
+    if (!rows.length) { ['b-state', 's-state'].forEach((id) => setState($(id), '', t('noRows'))); return; }
     renderHeadlineGap(); renderBudget(); renderScatter(); renderTable();
   } catch (e) {
-    ['b-state', 's-state'].forEach((id) => setState($(id), 'err', 'Les communes n\'ont pas pu être chargées : ' + e.message + '. Rechargez la page.'));
+    ['b-state', 's-state'].forEach((id) => setState($(id), 'err', t('communesFail') + e.message + t('reload')));
   }
 }
 function renderHeadlineGap() {
@@ -218,7 +326,7 @@ function renderHeadlineGap() {
   if (!f.length) return;
   const hi = f.reduce((a, b) => (b.flatMedianM2 > a.flatMedianM2 ? b : a)), lo = f.reduce((a, b) => (b.flatMedianM2 < a.flatMedianM2 ? b : a));
   $('k-gap').textContent = '× ' + nf(hi.flatMedianM2 / lo.flatMedianM2, 0);
-  $('k-gap-sub').innerHTML = `${portraitLink(hi.code, hi.commune)} ${nf(hi.flatMedianM2)} €/m² · ${portraitLink(lo.code, lo.commune)} ${nf(lo.flatMedianM2)} €/m² <span class="pill">appart., ≥ 100 ventes</span>`;
+  $('k-gap-sub').innerHTML = `${portraitLink(hi.code, hi.commune)} ${escapeHtml(eurM2(hi.flatMedianM2))} · ${portraitLink(lo.code, lo.commune)} ${escapeHtml(eurM2(lo.flatMedianM2))} <span class="pill">${escapeHtml(t('gapPill'))}</span>`;
 }
 
 function renderBudget() {
@@ -230,15 +338,16 @@ function renderBudget() {
   const key = { income: (r) => r.medianIncome, price: (r) => r[pk], sales: (r) => r[sk] }[sort];
   ok.sort((a, b) => key(b) - key(a));
   const total = S.communes.filter((r) => r[pk] && (!dep || r.departement === dep)).length;
+  const depName = dep ? (S.depNames[dep] || dep) : '';
   if (!ok.length) {
-    setState($('b-state'), '', `Avec ${nf(budget)} € pour ${nf(surf)} m², aucune commune ${dep ? 'de ce département ' : ''}n'a un prix médian assez bas (${nf(total)} communes regardées).`);
+    setState($('b-state'), '', T[LANG].budgetNone(eur(budget), nf(surf), dep, nf(total)));
     $('b-table').hidden = true; return;
   }
-  setState($('b-state'), '', `${nf(ok.length)} communes sur ${nf(total)} où ${nf(surf)} m² ${type === 'flat' ? 'd\'appartement' : 'de maison'} au prix médian tiennent dans ${nf(budget)} €${dep ? ' — ' + (S.depNames[dep] || dep) : ''}. Les 60 premières :`);
+  setState($('b-state'), '', T[LANG].budgetSome(nf(ok.length), nf(total), nf(surf), type, eur(budget), depName));
   $('b-table').querySelector('tbody').innerHTML = ok.slice(0, 60).map((r) => `<tr>
       <td>${portraitLink(r.code, r.commune)}</td><td>${escapeHtml(r.departement)}</td>
-      <td class="n">${nf(r[pk])}</td><td class="n">${nf(r[pk] * surf)} €</td><td class="n">${nf(r[sk])}</td>
-      <td class="n">${nf(r.medianIncome)} €</td><td class="n">${r.povertyRate == null ? '—' : nf(r.povertyRate, 1) + ' %'}</td></tr>`).join('');
+      <td class="n">${nf(r[pk])}</td><td class="n">${escapeHtml(eur(r[pk] * surf))}</td><td class="n">${nf(r[sk])}</td>
+      <td class="n">${escapeHtml(eur(r.medianIncome))}</td><td class="n">${escapeHtml(pct(r.povertyRate))}</td></tr>`).join('');
   $('b-table').hidden = false;
 }
 ['b-budget', 'b-surf', 'b-type', 'b-sort'].forEach((id) => $(id).addEventListener('input', renderBudget));
@@ -246,16 +355,16 @@ $('b-dep').addEventListener('change', () => { S.dep = $('b-dep').value; renderDe
 
 function renderScatter() {
   const pts = S.communes.filter((r) => r.flatMedianM2 && r.medianIncome);
-  $('s-n').textContent = nf(pts.length) + ' communes';
-  const W = 700, H = 420, L = 56, B = 36, T = 10, R = 12;
+  $('s-n').textContent = nf(pts.length) + t('communes');
+  const W = 700, H = 420, L = 56, B = 36, T0 = 10, R = 12;
   const xs = pts.map((p) => p.medianIncome), ys = pts.map((p) => p.flatMedianM2);
   const x0 = 15000, x1 = Math.min(Math.max(...xs), 50000), y0 = 0, y1 = Math.min(Math.max(...ys), 14000);
-  const X = (v) => L + (W - L - R) * (Math.min(v, x1) - x0) / (x1 - x0), Y = (v) => H - B - (H - B - T) * (Math.min(v, y1) - y0) / (y1 - y0);
+  const X = (v) => L + (W - L - R) * (Math.min(v, x1) - x0) / (x1 - x0), Y = (v) => H - B - (H - B - T0) * (Math.min(v, y1) - y0) / (y1 - y0);
   let g = '';
   for (let v = 2000; v <= y1; v += 2000) g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#1e1e2e"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${nf(v)}</text>`;
-  for (let v = 20000; v <= x1; v += 5000) g += `<line y1="${T}" y2="${H - B}" x1="${X(v)}" x2="${X(v)}" stroke="#1e1e2e"/><text x="${X(v)}" y="${H - B + 16}" text-anchor="middle">${nf(v / 1000)} k€</text>`;
-  [5, 10, 20].forEach((yr) => { const a = yr / 70; g += `<line x1="${X(x0)}" y1="${Y(a * x0)}" x2="${X(x1)}" y2="${Y(a * x1)}" stroke="${colorFor(yr + 0.1)}" stroke-dasharray="4 4" opacity="0.6"/><text x="${X(Math.min(x1, y1 / a)) - 4}" y="${Y(Math.min(a * x1, y1)) + 14}" text-anchor="end">${yr} ans</text>`; });
-  g += `<text x="${(L + W) / 2}" y="${H - 4}" text-anchor="middle">niveau de vie médian (€/an)</text><text x="14" y="${(T + H - B) / 2}" transform="rotate(-90 14 ${(T + H - B) / 2})" text-anchor="middle">€/m² appartements</text>`;
+  for (let v = 20000; v <= x1; v += 5000) g += `<line y1="${T0}" y2="${H - B}" x1="${X(v)}" x2="${X(v)}" stroke="#1e1e2e"/><text x="${X(v)}" y="${H - B + 16}" text-anchor="middle">${nf(v / 1000)} k€</text>`;
+  [5, 10, 20].forEach((yr) => { const a = yr / 70; g += `<line x1="${X(x0)}" y1="${Y(a * x0)}" x2="${X(x1)}" y2="${Y(a * x1)}" stroke="${colorFor(yr + 0.1)}" stroke-dasharray="4 4" opacity="0.6"/><text x="${X(Math.min(x1, y1 / a)) - 4}" y="${Y(Math.min(a * x1, y1)) + 14}" text-anchor="end">${yr}${escapeHtml(t('years'))}</text>`; });
+  g += `<text x="${(L + W) / 2}" y="${H - 4}" text-anchor="middle">${escapeHtml(t('axisX'))}</text><text x="14" y="${(T0 + H - B) / 2}" transform="rotate(-90 14 ${(T0 + H - B) / 2})" text-anchor="middle">${escapeHtml(t('axisY'))}</text>`;
   const dots = pts.map((p, i) => `<circle cx="${X(p.medianIncome).toFixed(1)}" cy="${Y(p.flatMedianM2).toFixed(1)}" r="${p.flatSales > 2000 ? 3.4 : 2.2}" fill="${colorFor(p.yearsFlat70m2)}" opacity="0.75" data-i="${i}"/>`).join('');
   $('scatter').innerHTML = g + dots;
   S.scatterPts = pts;
@@ -266,7 +375,7 @@ $('scatter').addEventListener('mousemove', (e) => {
   const tip = $('tip');
   if (i == null) { tip.style.display = 'none'; return; }
   const p = S.scatterPts[Number(i)];
-  tip.innerHTML = `<b>${escapeHtml(p.commune)}</b> (${escapeHtml(p.departement)})<br>${nf(p.flatMedianM2)} €/m² · ${nf(p.medianIncome)} €/an<br>${nf(p.yearsFlat70m2, 1)} ans pour 70 m²`;
+  tip.innerHTML = `<b>${escapeHtml(p.commune)}</b> (${escapeHtml(p.departement)})<br>${escapeHtml(eurM2(p.flatMedianM2))} · ${escapeHtml(eur(p.medianIncome) + t('perYear'))}<br>${nf(p.yearsFlat70m2, 1)}${escapeHtml(t('tipYears'))}`;
   tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 10) + 'px'; tip.style.display = 'block';
 });
 $('scatter').addEventListener('mouseleave', () => { $('tip').style.display = 'none'; });
@@ -282,13 +391,13 @@ function renderTable() {
     if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
     return typeof va === 'string' ? dir * va.localeCompare(vb) : dir * (va - vb);
   });
-  $('t-count').textContent = nf(rows.length) + ' communes' + (S.dep ? ' — ' + (S.depNames[S.dep] || S.dep) : '');
+  $('t-count').textContent = nf(rows.length) + t('communes') + (S.dep ? ' — ' + (S.depNames[S.dep] || S.dep) : '');
   $('t-table').querySelector('tbody').innerHTML = rows.slice(0, 400).map((r) => `<tr>
       <td>${portraitLink(r.code, r.commune)}</td><td>${escapeHtml(r.departement)}</td>
       <td class="n">${nf(r.flatMedianM2)}</td><td class="n">${nf(r.houseMedianM2)}</td>
-      <td class="n">${nf(r.medianIncome)}</td><td class="n">${r.povertyRate == null ? '—' : nf(r.povertyRate, 1) + ' %'}</td>
+      <td class="n">${nf(r.medianIncome)}</td><td class="n">${escapeHtml(pct(r.povertyRate))}</td>
       <td class="n" style="color:${r.yearsFlat70m2 ? colorFor(r.yearsFlat70m2) : 'inherit'}">${nf(r.yearsFlat70m2, 1)}</td><td class="n">${nf(r.yearsHouse100m2, 1)}</td></tr>`).join('')
-    + (rows.length > 400 ? `<tr><td colspan="8" class="sub">… ${nf(rows.length - 400)} autres — affinez la recherche.</td></tr>` : '');
+    + (rows.length > 400 ? `<tr><td colspan="8" class="sub">${escapeHtml(T[LANG].more(nf(rows.length - 400)))}</td></tr>` : '');
 }
 $('t-find').addEventListener('input', renderTable);
 $('t-table').querySelector('thead').addEventListener('click', (e) => {
@@ -299,6 +408,7 @@ $('t-table').querySelector('thead').addEventListener('click', (e) => {
 
 $('hiw-link').addEventListener('click', (e) => { e.preventDefault(); const h = $('how-it-works'); h.classList.toggle('open'); if (h.classList.contains('open')) h.scrollIntoView({ behavior: 'smooth' }); });
 if (location.hash === '#how-it-works') $('how-it-works').classList.add('open');
+applyLang();
 loadFrance(); loadDepts(); loadCommunes();
 </script>
 <div id="embabel-badge" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 0;background:rgba(10,10,15,0.9);border-top:1px solid rgba(99,192,245,0.2);font-size:0.75rem;color:#6b7280;z-index:9999;pointer-events:none;">

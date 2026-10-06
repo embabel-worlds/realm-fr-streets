@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portrait de ma commune</title>
-<meta name="description" content="Tapez n'importe quelle commune de France et obtenez son portrait en direct : maire élu en 2026, population et âge, revenus et pauvreté, prix de l'immobilier au m² et années de revenu pour se loger, délinquance enregistrée depuis 2019, députés — comparés au département et à la France.">
+<meta name="description" content="Tapez n'importe quelle commune de France et obtenez son portrait en direct (français / English) : maire élu en 2026, population et âge, revenus et pauvreté, prix de l'immobilier au m² et années de revenu pour se loger, délinquance enregistrée depuis 2019, députés — comparés au département et à la France.">
 <link rel="stylesheet" href="/api/v1/apps-runtime/v1/theme.css">
 <script src="/api/v1/apps-runtime/v1/embabel.js"></script>
 <script src="/api/v1/apps-runtime/gateway.js"></script>
@@ -16,7 +16,12 @@
           --green:#3fd73c; --dim:#6b7280; --text:#e5e7eb; --red:#f2726f; --bleu:#4f7cff; --rouge:#ef4444; --gold:#e8b04b; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; line-height:1.45; }
+  body.lang-fr .en, body.lang-en .fr { display:none !important; }
   main { max-width:1080px; margin:0 auto; padding:28px 16px 90px; }
+  .top { display:flex; justify-content:space-between; align-items:start; gap:12px; }
+  .lang { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; flex:none; }
+  .lang button { background:none; border:0; color:var(--dim); padding:5px 12px; font:inherit; font-size:0.82rem; cursor:pointer; }
+  .lang button.on { background:var(--cyan); color:#04121c; font-weight:600; }
   .flag { display:inline-flex; gap:0; margin-right:10px; vertical-align:-3px; }
   .flag i { display:block; width:7px; height:22px; } .flag i:nth-child(1){background:var(--bleu)} .flag i:nth-child(2){background:#fff} .flag i:nth-child(3){background:var(--rouge)}
   h1 { margin:0; font-size:1.9rem; letter-spacing:-0.02em; }
@@ -81,13 +86,19 @@
   a { color:var(--cyan); }
 </style>
 </head>
-<body>
+<body class="lang-fr">
 <main>
-  <h1><span class="flag"><i></i><i></i><i></i></span>Portrait de ma commune</h1>
-  <p class="lede">Tapez le nom de n'importe quelle commune de France. Maire, habitants, revenus, prix de l'immobilier, délinquance : tout arrive en direct des sources officielles (INSEE, ministère de l'Intérieur, DVF), comparé au département et à la France.</p>
+  <div class="top">
+    <h1><span class="flag"><i></i><i></i><i></i></span><span class="fr">Portrait de ma commune</span><span class="en">My commune, in portrait</span></h1>
+    <div class="lang" role="group" aria-label="Langue / Language"><button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button></div>
+  </div>
+  <p class="lede">
+    <span class="fr">Tapez le nom de n'importe quelle commune de France. Maire, habitants, revenus, prix de l'immobilier, délinquance : tout arrive en direct des sources officielles (INSEE, ministère de l'Intérieur, DVF), comparé au département et à la France.</span>
+    <span class="en">Type the name of any commune in France. Mayor, residents, income, property prices, crime: everything arrives live from official sources (INSEE, the Interior Ministry, DVF), compared with the département and with France.</span>
+  </p>
 
   <div class="search">
-    <input id="q" type="search" autocomplete="off" placeholder="Biarritz, Saint-Malo, Annecy, Roubaix…" aria-label="Rechercher une commune">
+    <input id="q" type="search" autocomplete="off">
     <div id="sugg" class="sugg" role="listbox"></div>
   </div>
   <div class="chips" id="chips"></div>
@@ -99,29 +110,29 @@
         <h2 id="p-name"></h2>
         <div class="meta" id="p-meta"></div>
       </div>
-      <a class="share" id="p-share" href="#">Lien à partager</a>
+      <a class="share" id="p-share" href="#"><span class="fr">Lien à partager</span><span class="en">Shareable link</span></a>
     </div>
 
     <div class="grid">
       <div class="card c4">
-        <h3>Le maire</h3>
+        <h3><span class="fr">Le maire</span><span class="en">Mayor</span></h3>
         <div class="mayor"><div class="badge" id="m-badge">?</div><div><div class="big" style="font-size:1.25rem" id="m-name"></div><div class="sub" id="m-sub"></div></div></div>
       </div>
       <div class="card c4">
-        <h3>Habitants</h3>
+        <h3><span class="fr">Habitants</span><span class="en">Residents</span></h3>
         <div class="big" id="h-pop"></div>
         <div class="sub" id="h-sub"></div>
         <div class="spark" id="h-spark"></div>
       </div>
       <div class="card c4">
-        <h3>Revenus</h3>
+        <h3><span class="fr">Revenus</span><span class="en">Income</span></h3>
         <div class="big" id="r-inc"></div>
-        <div class="sub">niveau de vie médian par an (Filosofi 2023)</div>
+        <div class="sub"><span class="fr">niveau de vie médian par an (Filosofi 2023)</span><span class="en">median standard of living per year (Filosofi 2023)</span></div>
         <div class="cmp" id="r-cmp"></div>
       </div>
 
       <div class="card c6">
-        <h3>Immobilier</h3>
+        <h3><span class="fr">Immobilier</span><span class="en">Property</span></h3>
         <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:end">
           <div><div class="big" id="i-flat"></div><div class="sub" id="i-flat-sub"></div></div>
           <div><div class="big" id="i-house"></div><div class="sub" id="i-house-sub"></div></div>
@@ -129,92 +140,218 @@
         <div class="cmp" id="i-cmp"></div>
       </div>
       <div class="card c6">
-        <h3>Un 70 m² coûte…</h3>
+        <h3 id="y-title"></h3>
         <div style="display:flex;align-items:end;gap:14px"><div class="years" id="y-years"></div><div class="sub" id="y-sub" style="max-width:260px"></div></div>
         <div class="cmp" id="y-cmp"></div>
       </div>
 
       <div class="card c6">
-        <h3>Âge des habitants (2023)</h3>
+        <h3><span class="fr">Âge des habitants (2023)</span><span class="en">Age of residents (2023)</span></h3>
         <div class="bars" id="age"></div>
       </div>
       <div class="card c6">
-        <h3>Société</h3>
+        <h3><span class="fr">Société</span><span class="en">Society</span></h3>
         <div class="cmp" id="soc"></div>
       </div>
 
       <div class="card c12">
-        <h3>Délinquance enregistrée — <span id="c-year">2025</span> par rapport à 2019</h3>
-        <div id="crime-state" class="state busy">Chargement…</div>
-        <table id="crime" hidden><thead><tr><th>Indicateur</th><th class="n">Taux pour 1 000</th><th class="n">Faits</th><th class="n">2019</th><th class="n">Évolution</th></tr></thead><tbody></tbody></table>
-        <p class="sub" style="margin-top:8px">Faits constatés par la police et la gendarmerie, comptés là où ils ont été enregistrés ; cambriolages pour 1 000 logements. « Non publié » : le SSMSI ne diffuse pas les petits volumes (secret statistique) — ce n'est ni zéro, ni la moyenne du département.</p>
+        <h3><span class="fr">Délinquance enregistrée — 2025 par rapport à 2019</span><span class="en">Recorded crime — 2025 against 2019</span></h3>
+        <div id="crime-state" class="state busy"></div>
+        <table id="crime" hidden><thead><tr>
+          <th><span class="fr">Indicateur</span><span class="en">Indicator</span></th>
+          <th class="n"><span class="fr">Taux pour 1 000</span><span class="en">Rate per 1,000</span></th>
+          <th class="n"><span class="fr">Faits</span><span class="en">Count</span></th>
+          <th class="n">2019</th>
+          <th class="n"><span class="fr">Évolution</span><span class="en">Change</span></th>
+        </tr></thead><tbody></tbody></table>
+        <p class="sub" style="margin-top:8px">
+          <span class="fr">Faits constatés par la police et la gendarmerie, comptés là où ils ont été enregistrés ; cambriolages pour 1 000 logements. « Non publié » : le SSMSI ne diffuse pas les petits volumes (secret statistique) — ce n'est ni zéro, ni la moyenne du département.</span>
+          <span class="en">Offences recorded by the police and gendarmerie, counted where they were recorded; burglary per 1,000 dwellings. "Not published": the SSMSI withholds small counts (statistical secrecy) — it is neither zero nor the département average.</span>
+        </p>
       </div>
 
       <div class="card c12">
-        <h3>Députés du département</h3>
+        <h3><span class="fr">Députés du département</span><span class="en">The département's deputies</span></h3>
         <ul class="deps" id="deps"></ul>
-        <p class="sub" style="margin-top:6px">Tous les députés du département : le répertoire des élus ne relie pas chaque commune à sa circonscription.</p>
+        <p class="sub" style="margin-top:6px"><span class="fr">Tous les députés du département : le répertoire des élus ne relie pas chaque commune à sa circonscription.</span><span class="en">Every deputy of the département: the register of elected officials does not link each commune to its constituency.</span></p>
       </div>
     </div>
   </section>
 
   <section id="how-it-works" class="card">
-    <h2 style="margin-top:0">Comment ça marche</h2>
-    <h3>1. Les données</h3>
-    <ul>
-      <li><b>Recherche</b> : geo.api.gouv.fr (<code>gateway.frGeo.frCommunes</code>), communes classées par population.</li>
-      <li><b>Population, âge, immigration</b> : recensements INSEE 2012, 2017 et 2023 (API Melodi). « Immigré » = né étranger à l'étranger ; la France ne collecte pas de statistiques ethniques.</li>
-      <li><b>Revenus</b> : INSEE Filosofi 2023, niveau de vie médian (par unité de consommation) et taux de pauvreté (seuil à 60 %). Absents pour les très petites communes (secret statistique).</li>
-      <li><b>Immobilier</b> : statistiques DVF d'Etalab, prix médian au m² de toutes les ventes notariées des 10 derniers semestres. Hors Alsace-Moselle et Mayotte ; Paris, Lyon et Marseille sont publiés par arrondissement.</li>
-      <li><b>Maire</b> : Répertoire national des élus, mis à jour après les municipales de mars 2026. <b>Députés</b> : même répertoire.</li>
-      <li><b>Délinquance</b> : base communale du SSMSI (ministère de l'Intérieur), 2016–2025.</li>
-      <li>Chaque source est mise en cache une semaine par le monde Embabel ; la première consultation d'une commune peut prendre quelques secondes de plus.</li>
-    </ul>
-    <h3>2. Les questions</h3>
-    <ul>
-      <li><code>FrCommuneSnapshot</code>(code) : l'identité, la population, l'âge, les revenus, l'immigration, le maire, l'immobilier et les années de revenu pour 70 m².</li>
-      <li><code>FrCommuneContext</code>(code) : les repères du département et de la France (revenus, pauvreté, inégalités, prix) et les députés du département.</li>
-      <li><code>FrCommuneCrime</code>(code, year = 2025, baseline = 2019) : chaque indicateur de délinquance, cette année et en 2019.</li>
-    </ul>
-    <p>Les trois vues sont appelées en parallèle par leur nom (<code>gateway.view.run</code>). La page ne contient aucune requête Cypher.</p>
-    <h3>3. Si quelque chose semble faux</h3>
-    <ul>
-      <li>Un tiret « — » : la source ne publie pas ce chiffre pour cette commune (petite commune, Alsace-Moselle pour l'immobilier, arrondissement sans maire). Ce n'est pas zéro.</li>
-      <li>Un message d'erreur : une source n'a pas répondu. Ce n'est pas la même chose qu'une absence de données ; rechargez la commune.</li>
-      <li>« Années de revenu » : prix médian au m² × surface ÷ niveau de vie médian d'une personne (70 m² en appartement ; 100 m² en maison quand la commune n'a pas assez de ventes d'appartements). Un repère de l'écart entre prix et revenus locaux, pas un calcul de crédit.</li>
-    </ul>
-    <h3>4. Ce qui rend cela possible</h3>
-    <ul>
-      <li>Six sources publiques différentes sont reliées par le code INSEE à l'intérieur de la requête qui lit les lignes ; il n'y a ni entrepôt de données ni chargement préalable.</li>
-      <li>Les années de revenu sont calculées à partir de deux producteurs (DVF et Filosofi) au moment de la requête.</li>
-    </ul>
+    <div class="fr">
+      <h2 style="margin-top:0">Comment ça marche</h2>
+      <h3>1. Les données</h3>
+      <ul>
+        <li><b>Recherche</b> : geo.api.gouv.fr (<code>gateway.frGeo.frCommunes</code>), communes classées par population.</li>
+        <li><b>Population, âge, immigration</b> : recensements INSEE 2012, 2017 et 2023 (API Melodi). « Immigré » = né étranger à l'étranger ; la France ne collecte pas de statistiques ethniques.</li>
+        <li><b>Revenus</b> : INSEE Filosofi 2023, niveau de vie médian (par unité de consommation) et taux de pauvreté (seuil à 60 %). Absents pour les très petites communes (secret statistique).</li>
+        <li><b>Immobilier</b> : statistiques DVF d'Etalab, prix médian au m² de toutes les ventes notariées des 10 derniers semestres. Hors Alsace-Moselle (Livre foncier, droit local) et Mayotte ; Paris, Lyon et Marseille sont publiés par arrondissement.</li>
+        <li><b>Maire</b> : Répertoire national des élus, mis à jour après les municipales de mars 2026. <b>Députés</b> : même répertoire.</li>
+        <li><b>Délinquance</b> : base communale du SSMSI (ministère de l'Intérieur), 2016–2025.</li>
+        <li>Chaque source est mise en cache une semaine par le monde Embabel ; la première consultation d'une commune peut prendre quelques secondes de plus.</li>
+      </ul>
+      <h3>2. Les questions</h3>
+      <ul>
+        <li><code>FrCommuneSnapshot</code>(code) : l'identité, la population, l'âge, les revenus, l'immigration, le maire, l'immobilier et les années de revenu pour 70 m².</li>
+        <li><code>FrCommuneContext</code>(code) : les repères du département et de la France (revenus, pauvreté, inégalités, prix) et les députés du département.</li>
+        <li><code>FrCommuneCrime</code>(code, year = 2025, baseline = 2019) : chaque indicateur de délinquance, cette année et en 2019.</li>
+      </ul>
+      <p>Les trois vues sont appelées en parallèle par leur nom (<code>gateway.view.run</code>). La page ne contient aucune requête Cypher. Le choix de langue est mémorisé dans ce navigateur.</p>
+      <h3>3. Si quelque chose semble faux</h3>
+      <ul>
+        <li>Un tiret « — » : la source ne publie pas ce chiffre pour cette commune (petite commune, Alsace-Moselle pour l'immobilier, arrondissement sans maire). Ce n'est pas zéro.</li>
+        <li>Un message d'erreur : une source n'a pas répondu. Ce n'est pas la même chose qu'une absence de données ; rechargez la commune.</li>
+        <li>« Années de revenu » : prix médian au m² × surface ÷ niveau de vie médian d'une personne (70 m² en appartement ; 100 m² en maison quand la commune n'a pas assez de ventes d'appartements). Un repère de l'écart entre prix et revenus locaux, pas un calcul de crédit.</li>
+      </ul>
+      <h3>4. Ce qui rend cela possible</h3>
+      <ul>
+        <li>Six sources publiques différentes sont reliées par le code INSEE à l'intérieur de la requête qui lit les lignes ; il n'y a ni entrepôt de données ni chargement préalable.</li>
+        <li>Les années de revenu sont calculées à partir de deux producteurs (DVF et Filosofi) au moment de la requête.</li>
+      </ul>
+    </div>
+    <div class="en">
+      <h2 style="margin-top:0">How it works</h2>
+      <h3>1. The data</h3>
+      <ul>
+        <li><b>Search</b>: geo.api.gouv.fr (<code>gateway.frGeo.frCommunes</code>), communes ranked by population.</li>
+        <li><b>Population, age, immigration</b>: INSEE censuses 2012, 2017 and 2023 (Melodi API). "Immigrant" = born abroad and not French at birth; France collects no ethnic statistics.</li>
+        <li><b>Income</b>: INSEE Filosofi 2023, median standard of living (per consumption unit) and poverty rate (60% threshold). Missing for very small communes (statistical secrecy).</li>
+        <li><b>Property</b>: Etalab's DVF statistics, median price per m² of every notarised sale over the last 10 half-years. Excludes Alsace-Moselle (Livre foncier, local law) and Mayotte; Paris, Lyon and Marseille are published per arrondissement.</li>
+        <li><b>Mayor</b>: the Répertoire national des élus, updated after the March 2026 municipal elections. <b>Deputies</b>: the same register.</li>
+        <li><b>Crime</b>: the SSMSI commune base (Interior Ministry), 2016–2025.</li>
+        <li>Each source is cached for a week by the Embabel world; the first look at a commune can take a few seconds longer.</li>
+      </ul>
+      <h3>2. The questions</h3>
+      <ul>
+        <li><code>FrCommuneSnapshot</code>(code): identity, population, age, income, immigration, mayor, property prices and years of income for 70 m².</li>
+        <li><code>FrCommuneContext</code>(code): the département's and France's yardsticks (income, poverty, inequality, prices) and the département's deputies.</li>
+        <li><code>FrCommuneCrime</code>(code, year = 2025, baseline = 2019): every crime indicator, this year and in 2019.</li>
+      </ul>
+      <p>The three views are called in parallel by name (<code>gateway.view.run</code>). The page contains no Cypher. Your language choice is remembered in this browser.</p>
+      <h3>3. When something looks wrong</h3>
+      <ul>
+        <li>A dash "—": the source does not publish that figure for this commune (small commune, Alsace-Moselle for property, an arrondissement with no mayor). It is not zero.</li>
+        <li>An error message: a source did not answer. That is not the same as no data; reload the commune.</li>
+        <li>"Years of income": median price per m² × surface ÷ one person's median standard of living (70 m² for a flat; 100 m² for a house when the commune has too few flat sales). A yardstick of the gap between local prices and incomes, not a mortgage calculation.</li>
+      </ul>
+      <h3>4. What made this possible</h3>
+      <ul>
+        <li>Six different public sources are joined on the INSEE code inside the query that reads the rows; there is no data warehouse and no preloading.</li>
+        <li>Years of income are computed from two producers (DVF and Filosofi) at query time.</li>
+      </ul>
+    </div>
   </section>
-  <footer><a href="#" id="hiw-link">Comment ça marche</a></footer>
+  <footer><a href="#" id="hiw-link"><span class="fr">Comment ça marche</span><span class="en">How it works</span></a></footer>
 </main>
 
 <script>
 const $ = (id) => document.getElementById(id);
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
-const eur = (v) => v == null ? '—' : nf(v) + ' €';
-const pct = (v, d = 1) => v == null ? '—' : nf(v, d) + ' %';
+
+/* ── language ───────────────────────────────────────────────────────── */
+const LANG_KEY = 'fr-streets-lang';
+let LANG = 'fr';
+try { const saved = localStorage.getItem(LANG_KEY); if (saved === 'en' || saved === 'fr') LANG = saved; } catch (e) { /* storage blocked: default French */ }
+const T = {
+  fr: {
+    placeholder: 'Strasbourg, Biarritz, Saint-Malo, Annecy…', searchAria: 'Rechercher une commune', inhab: 'hab.',
+    noMatch: 'Aucune commune ne correspond.', searchFail: 'La recherche a échoué : ',
+    loading: 'Je rassemble le portrait (INSEE, DVF, ministère de l\'Intérieur)…', noData: 'Aucune donnée publiée pour le code ',
+    loadFail: 'Le portrait n\'a pas pu être chargé : ', retry: '. Réessayez.', timeout: 'délai dépassé', empty: 'réponse vide',
+    viewFail: 'la vue a échoué', sourceFail: 'une source n\'a pas répondu : ',
+    postcode: 'CP ', commune: 'Commune ', mayor: 'Maire', since: 'depuis le ', notListed: 'Non répertorié',
+    notListedSub: 'Le répertoire des élus ne liste que les maires de commune (pas d\'arrondissement).',
+    sinceYear: ' % depuis 2012', perKm2: ' hab./km²',
+    dept: 'Département', france: 'France métropolitaine', franceShort: 'France', poverty: 'Taux de pauvreté', deptAbbr: ' — dép. ',
+    flats: 'appartements', houses: 'maisons', sales: ' ventes',
+    flatsCmp: 'Appartements — département / France', housesCmp: 'Maisons — département / France', note: 'Note',
+    byArr: 'publié par arrondissement', noPrice: 'pas de prix publié (Mayotte ou trop peu de ventes)',
+    alsaceNote: 'Alsace-Moselle : les ventes sont inscrites au Livre foncier (droit local), absent des données DVF publiées par l\'État',
+    yFlatTitle: 'Un 70 m² coûte…', yHouseTitle: 'Une maison de 100 m² coûte…',
+    yFlat: 'années de niveau de vie médian local pour un appartement de 70 m²',
+    yHouse: 'années de niveau de vie médian local pour une maison de 100 m² (pas assez de ventes d\'appartements)',
+    yAlsace: 'Alsace-Moselle : pas de prix en open data (Livre foncier, hors DVF)', yNone: 'pas assez de données pour ce calcul', years: ' ans',
+    noAge: 'Pas de structure par âge publiée.',
+    density: 'Densité', over65: '65 ans et plus', under25: 'Moins de 25 ans', immigrants: 'Immigrés (nés étrangers à l\'étranger)',
+    gini: 'Inégalités du département (Gini)', surface: 'Surface',
+    crimeLoading: 'Chargement de la délinquance…', crimeNone: 'Le SSMSI ne publie aucun indicateur pour cette commune.',
+    crimeFail: 'La délinquance n\'a pas pu être chargée : ', notPublished: 'non publié',
+  },
+  en: {
+    placeholder: 'Strasbourg, Biarritz, Saint-Malo, Annecy…', searchAria: 'Search for a commune', inhab: 'inhab.',
+    noMatch: 'No commune matches.', searchFail: 'Search failed: ',
+    loading: 'Assembling the portrait (INSEE, DVF, Interior Ministry)…', noData: 'No data published for code ',
+    loadFail: 'The portrait could not be loaded: ', retry: '. Please try again.', timeout: 'timed out', empty: 'empty response',
+    viewFail: 'the view failed', sourceFail: 'a source did not answer: ',
+    postcode: 'Postcode ', commune: 'Commune ', mayor: 'Mayor', since: 'since ', notListed: 'Not listed',
+    notListedSub: 'The register of elected officials lists commune mayors only (not arrondissements).',
+    sinceYear: '% since 2012', perKm2: ' per km²',
+    dept: 'Département', france: 'Metropolitan France', franceShort: 'France', poverty: 'Poverty rate', deptAbbr: ' — dept. ',
+    flats: 'flats', houses: 'houses', sales: ' sales',
+    flatsCmp: 'Flats — département / France', housesCmp: 'Houses — département / France', note: 'Note',
+    byArr: 'published per arrondissement', noPrice: 'no published price (Mayotte or too few sales)',
+    alsaceNote: 'Alsace-Moselle: sales are recorded in the Livre foncier (local law), which the State\'s DVF open data does not include',
+    yFlatTitle: 'A 70 m² flat costs…', yHouseTitle: 'A 100 m² house costs…',
+    yFlat: 'years of the local median standard of living for a 70 m² flat',
+    yHouse: 'years of the local median standard of living for a 100 m² house (too few flat sales)',
+    yAlsace: 'Alsace-Moselle: no open price data (Livre foncier, outside DVF)', yNone: 'not enough data for this calculation', years: ' years',
+    noAge: 'No age structure published.',
+    density: 'Density', over65: '65 and over', under25: 'Under 25', immigrants: 'Immigrants (born abroad, not French at birth)',
+    gini: 'Département inequality (Gini)', surface: 'Area',
+    crimeLoading: 'Loading crime figures…', crimeNone: 'The SSMSI publishes no indicator for this commune.',
+    crimeFail: 'Crime figures could not be loaded: ', notPublished: 'not published',
+  },
+};
+const IND_EN = {
+  'Cambriolages de logement': 'Burglary', 'Destructions et dégradations volontaires': 'Criminal damage',
+  'Escroqueries et fraudes aux moyens de paiement': 'Fraud and payment fraud', 'Trafic de stupéfiants': 'Drug trafficking',
+  'Usage de stupéfiants': 'Drug use', 'Usage de stupéfiants (AFD)': 'Drug use (on-the-spot fines)',
+  'Violences physiques hors cadre familial': 'Physical violence outside the family', 'Violences physiques intrafamiliales': 'Domestic physical violence',
+  'Violences sexuelles': 'Sexual violence', 'Vols avec armes': 'Armed robbery', "Vols d'accessoires sur véhicules": 'Theft of vehicle accessories',
+  'Vols dans les véhicules': 'Theft from vehicles', 'Vols de véhicule': 'Vehicle theft', 'Vols sans violence contre des personnes': 'Non-violent theft from persons',
+  'Vols violents sans arme': 'Violent theft without a weapon',
+};
+const t = (k) => T[LANG][k] ?? T.fr[k] ?? k;
+const loc = () => (LANG === 'fr' ? 'fr-FR' : 'en-GB');
+const nf = (v, d = 0) => (v == null || isNaN(v)) ? '—' : Number(v).toLocaleString(loc(), { maximumFractionDigits: d, minimumFractionDigits: d });
+const eur = (v) => v == null ? '—' : (LANG === 'fr' ? nf(v) + ' €' : '€' + nf(v));
+const eurM2 = (v) => v == null ? '—' : (LANG === 'fr' ? nf(v) + ' €/m²' : '€' + nf(v) + '/m²');
+const pct = (v, d = 1) => v == null ? '—' : nf(v, d) + (LANG === 'fr' ? ' %' : '%');
 function setState(el, cls, text) { el.className = 'state ' + cls; el.textContent = text; el.hidden = false; }
 
+function applyLang() {
+  document.body.className = 'lang-' + LANG;
+  document.documentElement.lang = LANG;
+  document.title = LANG === 'fr' ? 'Portrait de ma commune' : 'My commune, in portrait';
+  document.querySelectorAll('.lang button').forEach((b) => b.classList.toggle('on', b.dataset.lang === LANG));
+  $('q').placeholder = t('placeholder'); $('q').setAttribute('aria-label', t('searchAria'));
+  if (CUR.s) render(CUR.s, CUR.c);
+  if (CUR.crime) renderCrime(CUR.crime);
+  else if (!$('crime-state').hidden && $('crime-state').classList.contains('busy')) $('crime-state').textContent = t('crimeLoading');
+}
+document.querySelector('.lang').addEventListener('click', (e) => {
+  const l = e.target.dataset && e.target.dataset.lang; if (!l || l === LANG) return;
+  LANG = l;
+  try { localStorage.setItem(LANG_KEY, LANG); } catch (err) { /* not persisted; still switches */ }
+  applyLang();
+});
+
 async function runView(name, params, ms = 120000) {
-  let t;
-  const timeout = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('délai dépassé (' + Math.round(ms / 1000) + ' s)')), ms); });
+  let tm;
+  const timeout = new Promise((_, rej) => { tm = setTimeout(() => rej(new Error(t('timeout') + ' (' + Math.round(ms / 1000) + ' s)')), ms); });
   try {
     const res = await Promise.race([gateway.view.run({ name, params }), timeout]);
-    if (!res || typeof res !== 'object') throw new Error('réponse vide');
-    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || 'la vue a échoué');
+    if (!res || typeof res !== 'object') throw new Error(t('empty'));
+    if (res.status === 'FAILED' || res.error) throw new Error((res.error && (res.error.message || res.error)) || t('viewFail'));
     const bad = (res.warnings || []).filter((w) => /PRODUCER_ERROR|INCOMPLETE/.test(String(w)));
-    if (bad.length) throw new Error('une source n\'a pas répondu : ' + String(bad[0]).slice(0, 140));
+    if (bad.length) throw new Error(t('sourceFail') + String(bad[0]).slice(0, 140));
     return res.rows || [];
-  } finally { clearTimeout(t); }
+  } finally { clearTimeout(tm); }
 }
 
 /* ── search ─────────────────────────────────────────────────────────── */
-const CHIPS = [['Biarritz','64122'],['Saint-Malo','35288'],['Annecy','74010'],['Marseille','13055'],['Roubaix','59512'],['Saint-Tropez','83119'],['Saint-Denis','93066'],['Amiens','80021']];
+const CHIPS = [['Strasbourg','67482'],['Biarritz','64122'],['Saint-Malo','35288'],['Annecy','74010'],['Marseille','13055'],['Roubaix','59512'],['Saint-Tropez','83119'],['Saint-Denis','93066'],['Amiens','80021']];
 $('chips').innerHTML = CHIPS.map(([n, c]) => `<button type="button" data-code="${escapeHtml(c)}">${escapeHtml(n)}</button>`).join('');
 $('chips').addEventListener('click', (e) => { const c = e.target.dataset && e.target.dataset.code; if (c) go(c); });
 
@@ -233,11 +370,11 @@ async function suggest(q) {
     sItems = Array.isArray(r) ? r : [];
     sActive = -1;
     $('sugg').innerHTML = sItems.length
-      ? sItems.map((c, i) => `<button type="button" data-i="${i}"><span>${escapeHtml(c.nom)}</span><small>${escapeHtml(c.codeDepartement)} · ${nf(c.population)} hab.</small></button>`).join('')
-      : '<div class="state" style="padding:10px 14px">Aucune commune ne correspond.</div>';
+      ? sItems.map((c, i) => `<button type="button" data-i="${i}"><span>${escapeHtml(c.nom)}</span><small>${escapeHtml(c.codeDepartement)} · ${nf(c.population)} ${escapeHtml(t('inhab'))}</small></button>`).join('')
+      : `<div class="state" style="padding:10px 14px">${escapeHtml(t('noMatch'))}</div>`;
     $('sugg').style.display = 'block';
   } catch (e) {
-    if (mySeq === sSeq) { $('sugg').innerHTML = '<div class="state err" style="padding:10px 14px">La recherche a échoué : ' + escapeHtml(e.message) + '</div>'; $('sugg').style.display = 'block'; }
+    if (mySeq === sSeq) { $('sugg').innerHTML = `<div class="state err" style="padding:10px 14px">${escapeHtml(t('searchFail') + e.message)}</div>`; $('sugg').style.display = 'block'; }
   }
 }
 $('sugg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) pick(Number(b.dataset.i)); });
@@ -254,25 +391,28 @@ function pick(i) { const c = sItems[i]; if (!c) return; $('q').value = c.nom; $(
 
 /* ── portrait ───────────────────────────────────────────────────────── */
 let gen = 0;
+const CUR = { s: null, c: null, crime: null };
 function go(code) {
   if (location.hash !== '#' + code) window.history.replaceState(null, '', '#' + code);
   load(code);
 }
 async function load(code) {
   const my = ++gen;
-  setState($('state'), 'busy', 'Je rassemble le portrait (INSEE, DVF, ministère de l\'Intérieur)…');
+  CUR.s = CUR.c = CUR.crime = null;
+  setState($('state'), 'busy', t('loading'));
   $('portrait').hidden = true;
   try {
     const [snap, ctx] = await Promise.all([runView('FrCommuneSnapshot', { code }), runView('FrCommuneContext', { code })]);
     if (my !== gen) return;
     const s = snap[0], c = ctx[0] || {};
-    if (!s || (!s.name && s.pop2023 == null)) { setState($('state'), '', 'Aucune donnée publiée pour le code ' + code + '.'); return; }
+    if (!s || (!s.name && s.pop2023 == null)) { setState($('state'), '', t('noData') + code + '.'); return; }
+    CUR.s = s; CUR.c = c;
     render(s, c);
     $('state').hidden = true;
     $('portrait').hidden = false;
     loadCrime(code, my);
   } catch (e) {
-    if (my === gen) setState($('state'), 'err', 'Le portrait n\'a pas pu être chargé : ' + e.message + '. Réessayez.');
+    if (my === gen) setState($('state'), 'err', t('loadFail') + e.message + t('retry'));
   }
 }
 
@@ -282,13 +422,13 @@ function cmpRows(el, rows) {
 function vsText(a, b) {
   if (a == null || b == null || !b) return '—';
   const d = Math.round(100 * (a - b) / b);
-  return (d >= 0 ? '+' : '') + d + ' %';
+  return (d >= 0 ? '+' : '') + d + (LANG === 'fr' ? ' %' : '%');
 }
 
 function render(s, c) {
-  $('p-name').textContent = s.name || ('Commune ' + s.code);
+  $('p-name').textContent = s.name || (t('commune') + s.code);
   const meta = [c.departementName ? c.departementName + ' (' + (s.departement || c.departement) + ')' : null,
-                s.postcodes && s.postcodes.length ? 'CP ' + s.postcodes.join(', ') : null, 'INSEE ' + s.code].filter(Boolean);
+                s.postcodes && s.postcodes.length ? t('postcode') + s.postcodes.join(', ') : null, 'INSEE ' + s.code].filter(Boolean);
   $('p-meta').textContent = meta.join(' · ');
   $('p-share').href = '#' + s.code;
 
@@ -297,17 +437,17 @@ function render(s, c) {
     const parts = s.mayor.split(' ');
     $('m-badge').textContent = (parts[0] || '?')[0] + ((parts[1] || '')[0] || '');
     $('m-name').textContent = s.mayor;
-    const since = s.mayorSince ? new Date(s.mayorSince).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
-    $('m-sub').textContent = ['Maire', since ? 'depuis le ' + since : null, s.mayorProfession].filter(Boolean).join(' · ');
+    const since = s.mayorSince ? new Date(s.mayorSince).toLocaleDateString(loc(), { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+    $('m-sub').textContent = [t('mayor'), since ? t('since') + since : null, s.mayorProfession].filter(Boolean).join(' · ');
   } else {
-    $('m-badge').textContent = '—'; $('m-name').textContent = 'Non répertorié';
-    $('m-sub').textContent = 'Le répertoire des élus ne liste que les maires de commune (pas d\'arrondissement).';
+    $('m-badge').textContent = '—'; $('m-name').textContent = t('notListed');
+    $('m-sub').textContent = t('notListedSub');
   }
 
   // Population
   $('h-pop').textContent = nf(s.population ?? s.pop2023);
-  const dens = s.densityPerKm2 != null ? nf(s.densityPerKm2) + ' hab./km²' : null;
-  const ch = s.popChangeSince2012Pct != null ? (s.popChangeSince2012Pct >= 0 ? '+' : '') + nf(s.popChangeSince2012Pct, 1) + ' % depuis 2012' : null;
+  const dens = s.densityPerKm2 != null ? nf(s.densityPerKm2) + t('perKm2') : null;
+  const ch = s.popChangeSince2012Pct != null ? (s.popChangeSince2012Pct >= 0 ? '+' : '') + nf(s.popChangeSince2012Pct, 1) + t('sinceYear') : null;
   $('h-sub').textContent = [ch, dens].filter(Boolean).join(' · ');
   const pops = [['2012', s.pop2012], ['2017', s.pop2017], ['2023', s.pop2023]];
   const pmax = Math.max(...pops.map((p) => p[1] || 0)) || 1, pmin = Math.min(...pops.map((p) => p[1] || pmax));
@@ -319,52 +459,51 @@ function render(s, c) {
   // Income
   $('r-inc').textContent = eur(s.medianIncome);
   cmpRows($('r-cmp'), [
-    ['Département', eur(c.deptMedianIncome) + '  (' + vsText(s.medianIncome, c.deptMedianIncome) + ')'],
-    ['France métropolitaine', eur(c.franceMedianIncome) + '  (' + vsText(s.medianIncome, c.franceMedianIncome) + ')'],
-    ['Taux de pauvreté', pct(s.povertyRate) + ' — dép. ' + pct(c.deptPovertyRate) + ', France ' + pct(c.francePovertyRate)],
+    [t('dept'), eur(c.deptMedianIncome) + '  (' + vsText(s.medianIncome, c.deptMedianIncome) + ')'],
+    [t('france'), eur(c.franceMedianIncome) + '  (' + vsText(s.medianIncome, c.franceMedianIncome) + ')'],
+    [t('poverty'), pct(s.povertyRate) + t('deptAbbr') + pct(c.deptPovertyRate) + ', ' + t('franceShort') + ' ' + pct(c.francePovertyRate)],
   ]);
 
-  // Housing
-  $('i-flat').textContent = s.flatMedianM2 ? nf(s.flatMedianM2) + ' €/m²' : '—';
-  $('i-flat-sub').textContent = s.flatMedianM2 ? 'appartements · ' + nf(s.flatSales) + ' ventes' : 'appartements';
-  $('i-house').textContent = s.houseMedianM2 ? nf(s.houseMedianM2) + ' €/m²' : '—';
-  $('i-house-sub').textContent = s.houseMedianM2 ? 'maisons · ' + nf(s.houseSales) + ' ventes' : 'maisons';
+  // Housing — Alsace-Moselle (57, 67, 68) records sales in the Livre foncier, not in DVF.
+  const alsace = ['57', '67', '68'].includes(String(s.departement || c.departement || s.code.slice(0, 2)));
+  $('i-flat').textContent = s.flatMedianM2 ? eurM2(s.flatMedianM2) : '—';
+  $('i-flat-sub').textContent = s.flatMedianM2 ? t('flats') + ' · ' + nf(s.flatSales) + t('sales') : t('flats');
+  $('i-house').textContent = s.houseMedianM2 ? eurM2(s.houseMedianM2) : '—';
+  $('i-house-sub').textContent = s.houseMedianM2 ? t('houses') + ' · ' + nf(s.houseSales) + t('sales') : t('houses');
   cmpRows($('i-cmp'), [
-    ['Appartements — département / France', nf(c.deptFlatMedianM2) + ' / ' + nf(c.franceFlatMedianM2) + ' €/m²'],
-    ['Maisons — département / France', nf(c.deptHouseMedianM2) + ' / ' + nf(c.franceHouseMedianM2) + ' €/m²'],
-    !s.flatMedianM2 && !s.houseMedianM2 ? ['Note', s.code === '75056' || s.code === '69123' || s.code === '13055' ? 'publié par arrondissement' : 'pas de prix publié (Alsace-Moselle, Mayotte ou trop peu de ventes)'] : null,
+    [t('flatsCmp'), nf(c.deptFlatMedianM2) + ' / ' + eurM2(c.franceFlatMedianM2)],
+    [t('housesCmp'), nf(c.deptHouseMedianM2) + ' / ' + eurM2(c.franceHouseMedianM2)],
+    !s.flatMedianM2 && !s.houseMedianM2 ? [t('note'), s.code === '75056' || s.code === '69123' || s.code === '13055' ? t('byArr') : alsace ? t('alsaceNote') : t('noPrice')] : null,
   ]);
 
   // Years — flats when the commune has flat sales; otherwise a 100 m² house, so a village still gets an answer.
   const useHouse = s.yearsForFlat70m2 == null && s.houseMedianM2 && s.medianIncome;
   const years = useHouse ? s.houseMedianM2 * 100 / s.medianIncome : s.yearsForFlat70m2;
-  document.querySelector('#y-years').closest('.card').querySelector('h3').textContent = useHouse ? 'Une maison de 100 m² coûte…' : 'Un 70 m² coûte…';
+  $('y-title').textContent = useHouse ? t('yHouseTitle') : t('yFlatTitle');
   $('y-years').textContent = years != null ? nf(years, 1) : '—';
-  $('y-sub').textContent = years != null
-    ? (useHouse ? 'années de niveau de vie médian local pour une maison de 100 m² (pas assez de ventes d\'appartements)' : 'années de niveau de vie médian local pour un appartement de 70 m²')
-    : 'pas assez de données pour ce calcul';
+  $('y-sub').textContent = years != null ? (useHouse ? t('yHouse') : t('yFlat')) : (alsace ? t('yAlsace') : t('yNone'));
   const dYears = useHouse ? (c.deptHouseMedianM2 && c.deptMedianIncome ? c.deptHouseMedianM2 * 100 / c.deptMedianIncome : null)
                           : (c.deptFlatMedianM2 && c.deptMedianIncome ? c.deptFlatMedianM2 * 70 / c.deptMedianIncome : null);
   const fYears = useHouse ? (c.franceHouseMedianM2 && c.franceMedianIncome ? c.franceHouseMedianM2 * 100 / c.franceMedianIncome : null)
                           : (c.franceFlatMedianM2 && c.franceMedianIncome ? c.franceFlatMedianM2 * 70 / c.franceMedianIncome : null);
-  cmpRows($('y-cmp'), [['Département', dYears ? nf(dYears, 1) + ' ans' : '—'], ['France', fYears ? nf(fYears, 1) + ' ans' : '—']]);
+  cmpRows($('y-cmp'), [[t('dept'), dYears ? nf(dYears, 1) + t('years') : '—'], [t('franceShort'), fYears ? nf(fYears, 1) + t('years') : '—']]);
 
   // Age
   const labels = ['0–14', '15–24', '25–39', '40–54', '55–64', '65–79', '80 +'];
   const ages = s.agePct_0_15_25_40_55_65_80 || [];
   const amax = Math.max(...ages.filter((x) => x != null), 1);
   $('age').innerHTML = ages.length ? labels.map((l, i) => `<div class="bar"><span>${l}</span><div class="track"><div class="fill" style="width:${(100 * (ages[i] || 0) / amax).toFixed(0)}%"></div></div><span class="v">${pct(ages[i])}</span></div>`).join('')
-    : '<div class="state">Pas de structure par âge publiée.</div>';
+    : `<div class="state">${escapeHtml(t('noAge'))}</div>`;
 
   // Society
   const old = ages.length ? (ages[5] || 0) + (ages[6] || 0) : null;
   cmpRows($('soc'), [
-    ['Densité', dens || '—'],
-    ['65 ans et plus', old != null ? pct(old) : '—'],
-    ['Moins de 25 ans', ages.length ? pct((ages[0] || 0) + (ages[1] || 0)) : '—'],
-    ['Immigrés (nés étrangers à l\'étranger)', pct(s.immigrantPct)],
-    ['Inégalités du département (Gini)', c.deptGini != null ? nf(c.deptGini, 3) : '—'],
-    ['Surface', s.surfaceHa != null ? nf(s.surfaceHa / 100, 1) + ' km²' : '—'],
+    [t('density'), dens || '—'],
+    [t('over65'), old != null ? pct(old) : '—'],
+    [t('under25'), ages.length ? pct((ages[0] || 0) + (ages[1] || 0)) : '—'],
+    [t('immigrants'), pct(s.immigrantPct)],
+    [t('gini'), c.deptGini != null ? nf(c.deptGini, 3) : '—'],
+    [t('surface'), s.surfaceHa != null ? nf(s.surfaceHa / 100, 1) + ' km²' : '—'],
   ]);
 
   // Deputies
@@ -373,32 +512,38 @@ function render(s, c) {
 }
 
 async function loadCrime(code, my) {
-  setState($('crime-state'), 'busy', 'Chargement de la délinquance…');
+  setState($('crime-state'), 'busy', t('crimeLoading'));
   $('crime').hidden = true;
   try {
     const rows = await runView('FrCommuneCrime', { code, year: 2025, baseline: 2019 });
     if (my !== gen) return;
-    if (!rows.length) { setState($('crime-state'), '', 'Le SSMSI ne publie aucun indicateur pour cette commune.'); return; }
-    $('crime').querySelector('tbody').innerHTML = rows.map((r) => {
-      const supp = r.published === 'ndiff';
-      const chg = r.changePct;
-      const cls = chg == null ? '' : chg > 0 ? 'up' : 'down';
-      return `<tr><td>${escapeHtml(r.indicator)}</td>
-        <td class="n">${supp ? '<span class="pill">non publié</span>' : nf(r.rate, 2)}</td>
-        <td class="n">${supp ? '—' : nf(r.count)}</td>
-        <td class="n">${nf(r.baselineRate, 2)}</td>
-        <td class="n ${cls}">${chg == null ? '—' : (chg > 0 ? '+' : '') + nf(chg, 0) + ' %'}</td></tr>`;
-    }).join('');
-    $('crime-state').hidden = true; $('crime').hidden = false;
-  } catch (e) { if (my === gen) setState($('crime-state'), 'err', 'La délinquance n\'a pas pu être chargée : ' + e.message); }
+    CUR.crime = rows;
+    renderCrime(rows);
+  } catch (e) { if (my === gen) setState($('crime-state'), 'err', t('crimeFail') + e.message); }
+}
+function renderCrime(rows) {
+  if (!rows.length) { setState($('crime-state'), '', t('crimeNone')); $('crime').hidden = true; return; }
+  $('crime').querySelector('tbody').innerHTML = rows.map((r) => {
+    const supp = r.published === 'ndiff';
+    const chg = r.changePct;
+    const cls = chg == null ? '' : chg > 0 ? 'up' : 'down';
+    const label = LANG === 'en' && IND_EN[r.indicator] ? IND_EN[r.indicator] : r.indicator;
+    return `<tr><td title="${escapeHtml(r.indicator)}">${escapeHtml(label)}</td>
+      <td class="n">${supp ? `<span class="pill">${escapeHtml(t('notPublished'))}</span>` : nf(r.rate, 2)}</td>
+      <td class="n">${supp ? '—' : nf(r.count)}</td>
+      <td class="n">${nf(r.baselineRate, 2)}</td>
+      <td class="n ${cls}">${chg == null ? '—' : (chg > 0 ? '+' : '') + nf(chg, 0) + (LANG === 'fr' ? ' %' : '%')}</td></tr>`;
+  }).join('');
+  $('crime-state').hidden = true; $('crime').hidden = false;
 }
 
 $('hiw-link').addEventListener('click', (e) => { e.preventDefault(); const h = $('how-it-works'); h.classList.toggle('open'); if (h.classList.contains('open')) h.scrollIntoView({ behavior: 'smooth' }); });
 window.addEventListener('hashchange', () => { const c = location.hash.slice(1); if (/^[0-9AB]{5}$/.test(c)) load(c); });
 (function init() {
+  applyLang();
   const c = location.hash.slice(1);
   if (c === 'how-it-works') { $('how-it-works').classList.add('open'); return; }
-  load(/^[0-9AB]{5}$/.test(c) ? c : '64122');
+  load(/^[0-9AB]{5}$/.test(c) ? c : '67482');
 })();
 </script>
 <div id="embabel-badge" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 0;background:rgba(10,10,15,0.9);border-top:1px solid rgba(99,192,245,0.2);font-size:0.75rem;color:#6b7280;z-index:9999;pointer-events:none;">
