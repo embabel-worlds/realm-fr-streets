@@ -21,7 +21,7 @@
 # it adds the small communes with the MOST crime, and biases the fit.
 
 - name: FrCrimeLeague
-  description: "Communes ranked by a recorded-crime rate for one SSMSI indicator and year — highest first, with name, departement, rate, count and population. Only communes whose own figure is PUBLISHED and above a population floor (default 10,000, ~1,100 communes); a suppressed commune is not ranked and its departement average is never substituted. Rate per 1,000 residents (burglary: per 1,000 dwellings), counted where the offence was recorded — so commercial and tourist centres rank high on theft. Indicator labels are the SSMSI's own French labels (see FrCrime.indicator)."
+  description: "Communes ranked by a recorded-crime rate for one SSMSI indicator and year. Highest first, with name, departement, rate, count and population. Only communes whose own figure is PUBLISHED and above a population floor (default 10,000, ~1,100 communes); a suppressed commune is not ranked and its departement average is never substituted. Rate per 1,000 residents (burglary: per 1,000 dwellings), counted where the offence was recorded — so commercial and tourist centres rank high on theft. Indicator labels are the SSMSI's own French labels (see FrCrime.indicator)."
   params:
     indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label, exactly as published." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -56,7 +56,7 @@
     ORDER BY ratePer1000 DESC
 
 - name: FrCommunesRanked
-  description: "Every commune in the French crime model (default limit 2000 = all of them) with the value of each predictor beside it — recorded-crime rate, median standard of living (EUR/yr), poverty rate (%), density (inhabitants/km2), share aged 15-24 (%), immigrant share (%) and population — highest crime first. The same communes and figures FrWhatBestPredictsCrime fits, so a reader can find a place they know and see where it sits rather than taking coefficients on trust."
+  description: "Every commune in the crime model with each predictor beside it. Every commune in the French crime model (default limit 2000 = all of them) with the value of each predictor beside it — recorded-crime rate, median standard of living (EUR/yr), poverty rate (%), density (inhabitants/km2), share aged 15-24 (%), immigrant share (%) and population — highest crime first. The same communes and figures FrWhatBestPredictsCrime fits, so a reader can find a place they know and see where it sits rather than taking coefficients on trust."
   params:
     indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -128,7 +128,7 @@
     ORDER BY crimeRate DESC LIMIT $limit
 
 - name: FrCrimePredictorsOneByOne
-  description: "Each candidate predictor of a commune's recorded-crime rate measured ALONE — median standard of living, poverty rate, density, the 15-24 share, the immigrant share and population, each correlated with the rate on its own, with a confidence interval and whether the association is DETECTABLE. Read beside FrWhatBestPredictsCrime: a variable that looks strong here and weak there had its apparent effect belonging to a variable it travels with — that gap IS the confounding. Association across communes, never causation, and never a statement about any person or group."
+  description: "Each candidate predictor of a commune's recorded-crime rate measured ALONE. Median standard of living, poverty rate, density, the 15-24 share, the immigrant share and population, each correlated with the rate on its own, with a confidence interval and whether the association is DETECTABLE. Read beside FrWhatBestPredictsCrime: a variable that looks strong here and weak there had its apparent effect belonging to a variable it travels with — that gap IS the confounding. Association across communes, never causation, and never a statement about any person or group."
   params:
     indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -205,7 +205,7 @@
 # maps them back by this FIXED order: income, poverty, density, youngAdults,
 # immigrants, population (switched-off ones are dropped, order kept).
 - name: FrWhatBestPredictsCrime
-  description: "What best PREDICTS a French commune's recorded-crime rate for one SSMSI indicator — a least-squares fit across communes on WHICHEVER predictors the caller switches on: median standard of living (Filosofi 2023), poverty rate, density, the share aged 15-24, the IMMIGRANT share (census 2023: born abroad and not French at birth — France publishes no ethnic statistics) and population. Standardized betas so predictors compare directly, honest R², and the communes furthest ABOVE and BELOW their prediction by name. Predictors come back as x1..xn in this fixed order, switched-off ones dropped: income, poverty, density, youngAdults, immigrants, population. The commune set is identical for every combination (all predictors required non-null), so a beta that moves moved because the model changed. Covers only communes whose figure SSMSI publishes, above the population floor. Read a beta as association ACROSS PLACES — never a statement about the people in them; recorded crime also measures reporting and police activity (drug offences are almost wholly police-initiated), and crimes are counted where they happen, residents where they live."
+  description: "What best predicts a commune's recorded-crime rate, by regression. What best PREDICTS a French commune's recorded-crime rate for one SSMSI indicator — a least-squares fit across communes on WHICHEVER predictors the caller switches on: median standard of living (Filosofi 2023), poverty rate, density, the share aged 15-24, the IMMIGRANT share (census 2023: born abroad and not French at birth — France publishes no ethnic statistics) and population. Standardized betas so predictors compare directly, honest R², and the communes furthest ABOVE and BELOW their prediction by name. Predictors come back as x1..xn in this fixed order, switched-off ones dropped: income, poverty, density, youngAdults, immigrants, population. The commune set is identical for every combination (all predictors required non-null), so a beta that moves moved because the model changed. Covers only communes whose figure SSMSI publishes, above the population floor. Read a beta as association ACROSS PLACES — never a statement about the people in them; recorded crime also measures reporting and police activity (drug offences are almost wholly police-initiated), and crimes are counted where they happen, residents where they live."
   params:
     indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
     year: { type: int, default: 2025, description: "2016-2025." }

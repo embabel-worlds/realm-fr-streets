@@ -22,21 +22,28 @@
 # must pin the named property whenever it reads the named label (life expectancy is
 # published per sex — pooling women and men answers a different question).
 #
-# Usage:  EMBABEL_AUTH=user:pass | EMBABEL_TOKEN='Bearer …'  [APPLIANCE_BASE=http://localhost:11043]
-#         [ADVERSARIAL_RUNS=3] tests/verify.sh
+# Always run: pass 1 (VIEWS) and the SOURCE checks — a commune's recorded crime read against the
+# data.gouv tabular API directly (L2), and the year filter asked of the source, one call (L3).
+# Passes 2 and 3 call a model, so they are stochastic and cost money: they run with FULL=1.
+# Keyless: every source is open. The last line on success is exactly `ALL CHECKS PASS`.
+#
+# Usage:  APPLIANCE=http://localhost:11043 AUTH=user:pass [FULL=1] [ADVERSARIAL_RUNS=3] tests/verify.sh
+#         (EMBABEL_AUTH=user:pass, EMBABEL_TOKEN='Bearer …' and APPLIANCE_BASE still work)
 # Refuses to run without credentials — a harness that assumes them will eventually
 # hammer someone else's box.
 set -euo pipefail
 cd "$(dirname "$0")"
 
- if [ -z "${EMBABEL_AUTH:-}" ] && [ -z "${EMBABEL_TOKEN:-}" ]; then
-  echo "set EMBABEL_AUTH=user:pass or EMBABEL_TOKEN='Bearer …' for the target appliance" >&2; exit 2
+EMBABEL_AUTH="${AUTH:-${EMBABEL_AUTH:-}}"
+if [ -z "${EMBABEL_AUTH:-}" ] && [ -z "${EMBABEL_TOKEN:-}" ]; then
+  echo "set AUTH=user:pass (or EMBABEL_TOKEN='Bearer …') for the target appliance" >&2; exit 2
 fi
-BASE="${APPLIANCE_BASE:-http://localhost:11043}"
+BASE="${APPLIANCE:-${APPLIANCE_URL:-${APPLIANCE_BASE:-http://localhost:11043}}}"
 RUNS="${ADVERSARIAL_RUNS:-3}"
 
 python3 - "$BASE" "${EMBABEL_AUTH:-}" "${EMBABEL_TOKEN:-}" "$RUNS" <<'PY'
-import base64, glob, json, re, sys, time, urllib.request, urllib.error
+import base64, glob, json, os, re, sys, time, urllib.parse, urllib.request, urllib.error
+FULL = bool(os.environ.get("FULL"))
 
 base, auth, token, runs = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 authz = token if token else "Basic " + base64.b64encode(auth.encode()).decode()
@@ -146,7 +153,7 @@ def top_figure(rows, column):
 def numeric_cells(row):
     return [float(v) for v in row.values() if isinstance(v, (int, float))]
 
-for item in questions:
+for item in (questions if FULL else []):
     q, expect = item["question"], item["expect"]
     label = f"battery [{q[:48]}]"
     if "matchesView" not in expect:
@@ -214,7 +221,7 @@ for item in questions:
             print(f"FAIL {label}: {len(rows)} row(s), needed {need}")
 
 # ── 3. ADVERSARIAL ─────────────────────────────────────────────────────────────────
-schema = call("/api/v1/admin/kg/schema")
+schema = call("/api/v1/admin/kg/schema") if FULL else {"labels": []}
 props_by_label = {l["label"].lower(): {p["name"].lower() for p in l["properties"]}
                   for l in schema["labels"] if l["properties"]}
 VAR_LABEL = re.compile(r"\((\w+)\s*:\s*(\w+)")
@@ -256,7 +263,7 @@ ADVERSARIAL = [
     "how did Strasbourg vote in the 2022 presidential election",   # not carried
     "which far-right list came first in Strasbourg",               # the ministry labels no blocs
 ]
-for q in ADVERSARIAL:
+for q in (ADVERSARIAL if FULL else []):
     for i in range(runs):
         d = call("/api/v1/admin/kg/ask", {"question": q})
         label = f"adversarial [{q[:44]}] run {i + 1}"
@@ -276,11 +283,32 @@ for q in ADVERSARIAL:
             note = " (flagged)" if une else ""
             print(f"ok   {label}: honest{note}, rows={d.get('rowCount')}")
 
+# ── SOURCE: L2 against data.gouv, L3 the pushed year ─────────────────────────────
+# Biarritz (64122), the views' default commune: every indicator and year the SSMSI file holds
+# for it, and the same narrowed to one year — read from the tabular API directly, then through
+# the realm cold (`ai: {fresh: true}`), where the year must be asked of the source in one call.
+TAB = "https://tabular-api.data.gouv.fr/api/resources/44ef4323-1097-48d5-8719-3c544b55d294/data/?"
+def source_total(**filters):
+    q = urllib.parse.urlencode(dict(CODGEO_2026__in="64122", page_size=1, **filters))
+    with urllib.request.urlopen(TAB + q, timeout=120) as r:
+        return json.load(r)["meta"]["total"]
+def realm(cypher):
+    return call("/api/v1/admin/kg/execute", {"cypher": cypher})
+for label, where, filters in (("every year", "", {}), ("2024 only", " WHERE c.year = 2024", {"annee__exact": 2024})):
+    want = source_total(**filters)
+    d = realm("MATCH (c0:FrCommune {code: '64122'})-[:HAS_CRIME {ai: {fresh: true}}]->(c:FrCrime)" + where + " RETURN count(c) AS n")
+    got = (d.get("rows") or [{}])[0].get("n")
+    calls = d.get("apiCalls")
+    ok = got == want and (calls == 1 if filters else True)
+    print(f"{'ok  ' if ok else 'FAIL'} source: Biarritz crime rows, {label}: realm {got}, data.gouv {want}, {calls} source call(s)")
+    if not ok:
+        fails.append(f"source: Biarritz crime rows, {label}: realm {got} vs data.gouv {want}, apiCalls {calls}")
+
 print()
 if fails:
     print(f"{len(fails)} FAILURE(S):")
     for f in fails:
         print(" -", f)
     sys.exit(1)
-print("verify: all green")
+print("ALL CHECKS PASS")
 PY

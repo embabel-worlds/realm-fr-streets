@@ -23,6 +23,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'gdpPps'", id: "'gdpPps:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euGdpEur
@@ -39,6 +41,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'gdpEur'", id: "'gdpEur:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euPopulation
@@ -55,6 +59,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'population'", id: "'population:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euDensity
@@ -71,6 +77,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'density'", id: "'density:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euMedianAge
@@ -87,6 +95,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'medianAge'", id: "'medianAge:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euUnemployment
@@ -103,6 +113,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'unemployment'", id: "'unemployment:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euYouthUnemployment
@@ -119,6 +131,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'youthUnemployment'", id: "'youthUnemployment:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euLifeExpectancy
@@ -135,6 +149,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'lifeExpectancy'", id: "'lifeExpectancy:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: euHouseholdIncome
@@ -151,6 +167,8 @@
   # would collide across the nine files that all feed EuRegionStat.
   compute: {indicator: "'householdIncome'", id: "'householdIncome:' + r.geo + ':' + r.year"}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 # Region names (NUTS 2024) from Eurostat GISCO — one 90 KB file.
@@ -167,6 +185,8 @@
   # taken from the code instead (a NUTS code's first two letters ARE the country).
   compute: {country: 'substring(r.code, 0, 2)', id: 'r.code'}
   fileCacheSeconds: 2592000
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 2592000}
 
 # The same file WHOLE — every region's name, for a question that names a place ("the Bas-Rhin",
@@ -181,4 +201,6 @@
   project: {code: NUTS_ID, name: NUTS_NAME, latinName: NAME_LATN}
   compute: {country: 'substring(r.code, 0, 2)', id: 'r.code'}
   fileCacheSeconds: 2592000
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 2592000}

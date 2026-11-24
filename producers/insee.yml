@@ -15,6 +15,9 @@
   args: {}
   project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
+  # One place's whole Melodi table: the slice args above are what this door is, and Melodi rejects
+  # an empty dimension parameter, so a query's filter on a dimension is applied in the graph.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frMedianIncomeAll
   kind: remote
@@ -26,7 +29,10 @@
   args: {GEO: COM, FILOSOFI_MEASURE: MED_SL, maxResult: '60000'}
   project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frPovertyAll
   kind: remote
   operation: frFilosofi
@@ -37,7 +43,10 @@
   args: {GEO: COM, FILOSOFI_MEASURE: PR_MD60, maxResult: '60000'}
   project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frImmigrationAtPlace
   kind: remote
   operation: frImmigration
@@ -48,6 +57,9 @@
   args: {SEX: _T, AGE: _T, EMPSTA_ENQ: _T}
   project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
+  # One place's whole Melodi table: the slice args above are what this door is, and Melodi rejects
+  # an empty dimension parameter, so a query's filter on a dimension is applied in the graph.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frImmigrantsAll
   kind: remote
@@ -59,7 +71,10 @@
   args: {GEO: COM, IMMI: '1', SEX: _T, AGE: _T, EMPSTA_ENQ: _T, maxResult: '60000'}
   project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frPopulationAtPlace
   kind: remote
   operation: frPopulationAge
@@ -70,6 +85,9 @@
   args: {SEX: _T}
   project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
+  # One place's whole Melodi table: the slice args above are what this door is, and Melodi rejects
+  # an empty dimension parameter, so a query's filter on a dimension is applied in the graph.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frPopTotalAll
   kind: remote
@@ -81,7 +99,10 @@
   args: {GEO: COM, SEX: _T, AGE: _T, TIME_PERIOD: '2023', maxResult: '60000'}
   project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 - name: frPopYoungAll
   kind: remote
   operation: frPopulationAge
@@ -92,7 +113,10 @@
   args: {GEO: COM, SEX: _T, AGE: Y15T24, TIME_PERIOD: '2023', maxResult: '60000'}
   project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value, year: dimensions.TIME_PERIOD}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand + '':'' + r.year'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 # ── geo.api.gouv.fr — every commune's name, population and surface ──────────
 - name: frCommuneGeoAll
   kind: remote
@@ -103,4 +127,7 @@
   maxKeysPerCall: 1
   args: {fields: 'code,nom,population,surface,codeDepartement'}
   project: {code: code, name: nom, departement: codeDepartement, population: population, surfaceHa: surface}
-  cache: {kind: ttl, seconds: 604800}
+  # Every commune in one geo.api.gouv.fr call; the fields are fixed and the API filters nothing
+  # a property here could ask for.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}

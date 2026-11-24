@@ -26,6 +26,8 @@
   # Identity is scale + code (a code repeats across scales: region 11 vs departement 11).
   compute: {id: 'r.scale + '':'' + r.code'}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 - name: frDvfByScale
@@ -52,6 +54,8 @@
   # Identity is scale + code (a code repeats across scales: region 11 vs departement 11).
   compute: {id: 'r.scale + '':'' + r.code'}
   fileCacheSeconds: 604800
+  # A tabular file read whole and indexed by its key column; nothing is asked of the source but the file.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800}
 
 # ── geo.api.gouv.fr, one commune by code ────────────────────────────────────
@@ -63,4 +67,6 @@
   maxKeysPerCall: 1
   args: {fields: 'code,nom,population,surface,codeDepartement,codeRegion,codesPostaux,centre'}
   project: {code: code, name: nom, departement: codeDepartement, region: codeRegion, population: population, surfaceHa: surface, postcodes: 'codesPostaux[*]', centre: 'centre.coordinates[*]'}
+  # One commune by code: nothing left to filter at the source.
+  pushdown: []
   cache: {kind: ttl, seconds: 2592000, negativeTtlSeconds: 3600}

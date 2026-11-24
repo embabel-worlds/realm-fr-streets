@@ -12,6 +12,9 @@
   paging: {style: page, param: page, sizeParam: page_size, size: 200, maxPages: 40}
   project: {departement: Code_departement, region: Code_region, year: annee, indicator: indicateur, unit: unite_de_compte, count: nombre, ratePer1000: taux_pour_mille, population: insee_pop, dwellings: insee_log}
   compute: {id: 'r.departement + '':'' + toString(r.year) + '':'' + r.indicator'}
+  # The label token is the key (indicateur__contains); the year and departement filters the
+  # file also takes are left to the graph so one read serves every year of a token.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 
 # INSEE Melodi at GEO=DEP — small (hundreds to a few thousand rows), keyless.
@@ -25,7 +28,10 @@
   args: {GEO: DEP, maxResult: '10000'}
   project: {geo: dimensions.GEO, measure: dimensions.FILOSOFI_MEASURE, value: measures.OBS_VALUE_NIVEAU.value}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.measure'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 
 - name: frDeptImmigration
   kind: remote
@@ -37,7 +43,10 @@
   args: {GEO: DEP, SEX: _T, AGE: _T, EMPSTA_ENQ: _T, maxResult: '10000'}
   project: {geo: dimensions.GEO, status: dimensions.IMMI, persons: measures.OBS_VALUE_NIVEAU.value}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.status'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 
 - name: frDeptPopulation
   kind: remote
@@ -49,7 +58,10 @@
   args: {GEO: DEP, SEX: _T, TIME_PERIOD: '2023', maxResult: '10000'}
   project: {geo: dimensions.GEO, ageBand: dimensions.AGE, persons: measures.OBS_VALUE_NIVEAU.value}
   compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.ageBand'}
-  cache: {kind: ttl, seconds: 604800}
+  # The national slice is fixed by the args above; that is what this door is. Melodi takes no
+  # further filter a query could add without changing what the read means.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 
 - name: frDepartementNames
   kind: remote
@@ -60,7 +72,9 @@
   maxKeysPerCall: 1
   args: {}
   project: {code: code, name: nom, region: codeRegion}
-  cache: {kind: ttl, seconds: 2592000}
+  # Every departement in one geo.api.gouv.fr call; nothing to filter.
+  pushdown: []
+  cache: {kind: ttl, seconds: 2592000, negativeTtlSeconds: 3600}
 
 # INSEE life expectancy at birth, every departement, women and men separately
 # (INSEE publishes no both-sexes figure at this level), 1975-2025 — one call,
@@ -80,4 +94,4 @@
   # qualifier cannot be left out when a query does not filter on it — so the
   # whole series (~10k rows, one call) is fetched and the graph filters.
   pushdown: []
-  cache: {kind: ttl, seconds: 604800}
+  cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}

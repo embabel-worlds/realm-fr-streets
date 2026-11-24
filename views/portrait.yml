@@ -5,7 +5,7 @@
 # seeded before anything aggregates.
 
 - name: FrCommuneSnapshot
-  description: "Everything about ONE French commune by INSEE code, in one row: name, departement, postal codes, centre point, municipal population, surface and density; census population 2012 / 2017 / 2023 and its change; age structure 2023 (shares under 15, 15-24, 25-39, 40-54, 55-64, 65-79, 80+); median standard of living and poverty rate (Filosofi 2023); immigrant share (census 2023: born abroad, not French at birth); the mayor (after the March 2026 municipales) with profession and start date; median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts; and years of the local median standard of living needed to buy a 70 m2 flat. Arrondissement codes (751xx, 132xx, 6938x) work for census, income and prices but have no mayor or geography row."
+  description: "Everything about ONE French commune by INSEE code, in one row. Name, departement, postal codes, centre point, municipal population, surface and density; census population 2012 / 2017 / 2023 and its change; age structure 2023 (shares under 15, 15-24, 25-39, 40-54, 55-64, 65-79, 80+); median standard of living and poverty rate (Filosofi 2023); immigrant share (census 2023: born abroad, not French at birth); the mayor (after the March 2026 municipales) with profession and start date; median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts; and years of the local median standard of living needed to buy a 70 m2 flat. Arrondissement codes (751xx, 132xx, 6938x) work for census, income and prices but have no mayor or geography row."
   params:
     code: { type: string, default: "64122", description: "INSEE commune code, e.g. '64122' (Biarritz)." }
   cypher: |
@@ -53,7 +53,7 @@
            CASE WHEN h.aptMedianM2 > 0 AND medianIncome > 0 THEN round(10.0 * h.aptMedianM2 * 70 / medianIncome) / 10 END AS yearsForFlat70m2
 
 - name: FrCommuneCrime
-  description: "Recorded crime in ONE commune by INSEE code: one row per SSMSI indicator with the rate per 1,000 (burglary: per 1,000 dwellings) and count in the chosen year, the baseline year's rate (default 2019, last pre-COVID year) and the change. A suppressed figure (published = 'ndiff') has no rate; deptAvgIfSuppressed is the departement's average for suppressed communes — context, not this commune's rate."
+  description: "Recorded crime in ONE commune by INSEE code. One row per SSMSI indicator with the rate per 1,000 (burglary: per 1,000 dwellings) and count in the chosen year, the baseline year's rate (default 2019, last pre-COVID year) and the change. A suppressed figure (published = 'ndiff') has no rate; deptAvgIfSuppressed is the departement's average for suppressed communes — context, not this commune's rate."
   params:
     code: { type: string, default: "64122", description: "INSEE commune code." }
     year: { type: int, default: 2025, description: "Year to report." }
@@ -71,7 +71,7 @@
     ORDER BY indicator
 
 - name: FrCommuneContext
-  description: "The yardsticks for ONE commune by INSEE code: its departement's and France's median standard of living (Filosofi 2023; France = metropolitan) and poverty rate, the departement's inequality (Gini), the departement's and France's median price per m2 of flats and houses (DVF), and the departement's sitting deputies. Read beside FrCommuneSnapshot to say whether a commune is richer, poorer, dearer or cheaper than its surroundings."
+  description: "The yardsticks for ONE commune by INSEE code. Its departement's and France's median standard of living (Filosofi 2023; France = metropolitan) and poverty rate, the departement's inequality (Gini), the departement's and France's median price per m2 of flats and houses (DVF), and the departement's sitting deputies. Read beside FrCommuneSnapshot to say whether a commune is richer, poorer, dearer or cheaper than its surroundings. One commune only, by exact INSEE code."
   params:
     code: { type: string, default: "64122", description: "INSEE commune code." }
   cypher: |
