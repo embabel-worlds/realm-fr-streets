@@ -19,7 +19,7 @@
 - name: FrCommunes
   description: "A literal-seeded national anchor — MATCH (u:FrCommunes {set:'france'}) mints it per query so every commune's income, census and geography rows hang off one node; nothing is persisted. The uk-streets UkDistricts pattern. National CRIME hangs off FrCrimeSlice instead."
   properties:
-    set: { type: string, description: "The set literal, always 'france'." }
+    set: { type: string, description: "The set literal, always 'france'.", values: ["france"], metadata: { identity: "true", default: "france" } }
 
 - name: FrCrimeSlice
   description: "A literal-seeded national crime slice — MATCH (s:FrCrimeSlice {slice:'Cambriolages|2025|10000'}) mints it per query, and its LISTS_CRIME edge fetches every commune whose figure SSMSI PUBLISHES for indicators whose label contains the token, that year, above the population floor. Key = '<token>|<year>|<floor>', token a space-free word of the label (the engine refuses keys with spaces): Cambriolages, intrafamiliales, hors, sexuelles, armes, violents, personnes, véhicule (3 labels), dans, accessoires, Destructions, Usage (2 labels), AFD, Trafic, Escroqueries — filter c.indicator to the exact label afterwards. Several slices in one query: WHERE s.slice IN [k1, k2]. Nothing is persisted."
@@ -58,12 +58,12 @@
     id: { type: string, description: "commune:year:indicator. Identity.", metadata: { identity: "true" } }
     key: "The anchor key that produced the row — the slice key on the national door."
     code: { type: string, description: "INSEE commune/arrondissement code (CODGEO_2026)." }
-    year: { type: int, description: "Year the facts were recorded, 2016-2025." }
-    indicator: { type: string, description: "SSMSI indicator, exactly as published: 'Violences physiques intrafamiliales', 'Violences physiques hors cadre familial', 'Violences sexuelles', 'Vols avec armes', 'Vols violents sans arme', 'Vols sans violence contre des personnes', 'Cambriolages de logement', 'Vols de véhicule', 'Vols dans les véhicules', 'Vols d''accessoires sur véhicules', 'Destructions et dégradations volontaires', 'Usage de stupéfiants', 'Usage de stupéfiants (AFD)', 'Trafic de stupéfiants', 'Escroqueries et fraudes aux moyens de paiement'." }
+    year: { type: int, description: "Year the facts were recorded, 2016-2025.", dimension: true }
+    indicator: { type: string, description: "SSMSI indicator, exactly as published: 'Violences physiques intrafamiliales', 'Violences physiques hors cadre familial', 'Violences sexuelles', 'Vols avec armes', 'Vols violents sans arme', 'Vols sans violence contre des personnes', 'Cambriolages de logement', 'Vols de véhicule', 'Vols dans les véhicules', 'Vols d''accessoires sur véhicules', 'Destructions et dégradations volontaires', 'Usage de stupéfiants', 'Usage de stupéfiants (AFD)', 'Trafic de stupéfiants', 'Escroqueries et fraudes aux moyens de paiement'.", values: ["Violences physiques intrafamiliales", "Violences physiques hors cadre familial", "Violences sexuelles", "Vols avec armes", "Vols violents sans arme", "Vols sans violence contre des personnes", "Cambriolages de logement", "Vols de véhicule", "Vols dans les véhicules", "Vols d'accessoires sur véhicules", "Destructions et dégradations volontaires", "Usage de stupéfiants", "Usage de stupéfiants (AFD)", "Trafic de stupéfiants", "Escroqueries et fraudes aux moyens de paiement"], dimension: true }
     unit: { type: string, description: "What is counted: Victime, Infraction, Mis en cause, Victime entendue." }
     count: { type: number, description: "Number of recorded facts. Absent when suppressed." }
     ratePer1000: { type: number, description: "Facts per 1,000 residents (burglary: per 1,000 dwellings). Absent when suppressed." }
-    published: { type: string, description: "'diff' = the commune's own figure is published; 'ndiff' = suppressed." }
+    published: { type: string, description: "'diff' = the commune's own figure is published; 'ndiff' = suppressed.", values: ["diff", "ndiff"] }
     deptAvgRateForSuppressed: { type: number, description: "On a suppressed row only: the AVERAGE rate of all suppressed communes in the departement. Not this commune's rate." }
     population: { type: number, description: "INSEE municipal population used as the denominator." }
     dwellings: { type: number, description: "INSEE dwelling count (burglary denominator)." }
@@ -93,6 +93,7 @@
       producer: frMedianIncomeAll
       maxAnchors: 1
       description: "Median standard of living for all ~35k communes, one call, a week of cache."
+      fixes: { measure: MED_SL }
     - anchorLabel: FrCommunes
       relationship: HAS_POVERTY
       keyField: set
@@ -100,12 +101,13 @@
       producer: frPovertyAll
       maxAnchors: 1
       description: "Poverty rate for all communes, one call, a week of cache."
+      fixes: { measure: PR_MD60 }
   properties:
     id: { type: string, description: "geo:measure. Identity.", metadata: { identity: "true" } }
     key: "The anchor key — melodiGeo for a place, the set literal nationally."
     geo: { type: string, description: "Melodi GEO, e.g. '2026-COM-80021'." }
     code: { type: string, description: "INSEE code parsed from geo — joins FrCrime.code." }
-    measure: { type: string, description: "MED_SL (median standard of living) or PR_MD60 (poverty rate), or another Filosofi measure per place." }
+    measure: { type: string, description: "Filosofi measure code: MED_SL median standard of living (EUR/yr), PR_MD60 poverty rate (%, below 60% of median), GI_SL Gini index of inequality (0-1), IR_D9_D1_SL interdecile ratio D9/D1, S80S20_SL S80/S20 ratio, IQR_SL interquartile ratio, Q1_SL/Q3_SL quartiles, D1_SL..D9_SL deciles (EUR/yr), S_* shares of disposable income by source (salaries, unemployment, pensions, benefits, taxes). One measure per row.", values: ["MED_SL", "PR_MD60", "GI_SL", "IR_D9_D1_SL", "S80S20_SL", "IQR_SL", "Q1_SL", "Q3_SL", "D1_SL", "D2_SL", "D3_SL", "D4_SL", "D6_SL", "D7_SL", "D8_SL", "D9_SL", "S_EI_DI", "S_EI_DI_SAL", "S_EI_DI_N_SAL", "S_EI_DI_UNE", "S_RET_PEN_DI", "S_INC_ASS_DI", "S_SOC_BEN_DI", "S_SOC_BEN_DI_FAM_BEN", "S_SOC_BEN_DI_MIN_SOC", "S_SOC_BEN_DI_HOU_BEN", "S_DIR_TAX_DI"], dimension: true }
     value: { type: number, description: "The figure; absent when INSEE withholds it." }
     year: { type: string, description: "Reference year (2023)." }
 
@@ -133,12 +135,13 @@
       producer: frImmigrantsAll
       maxAnchors: 1
       description: "Immigrant count for all ~35k communes, one call, a week of cache."
+      fixes: { status: '1' }
   properties:
     id: { type: string, description: "geo:status. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    status: { type: string, description: "'1' immigrant, '0' non-immigrant, '_T' total." }
+    status: { type: string, description: "'1' immigrant, '0' non-immigrant, '_T' total. Share = persons('1') / persons('_T').", values: ["1", "0", "_T"], dimension: true }
     persons: { type: number, description: "Persons (census estimate, fractional)." }
     year: { type: string, description: "Census year." }
 
@@ -166,6 +169,7 @@
       producer: frPopTotalAll
       maxAnchors: 1
       description: "Total census population for all communes."
+      fixes: { ageBand: _T, year: '2023' }
     - anchorLabel: FrCommunes
       relationship: HAS_YOUNG_POP
       keyField: set
@@ -173,17 +177,21 @@
       producer: frPopYoungAll
       maxAnchors: 1
       description: "Population aged 15-24 for all communes."
+      fixes: { ageBand: Y15T24, year: '2023' }
   properties:
     id: { type: string, description: "geo:ageBand:year. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    ageBand: { type: string, description: "INSEE AGE code." }
+    ageBand: { type: string, description: "INSEE age band: _T all ages, Y_LT15 under 15, Y_LT20 under 20, Y15T24 aged 15-24, Y20T64 20-64, Y25T39, Y40T54, Y55T64, Y_GE65 65 and over, Y65T79, Y_GE80 80 and over. One band per row; bands overlap, never sum them.", values: ["_T", "Y_LT15", "Y_LT20", "Y15T24", "Y20T64", "Y25T39", "Y40T54", "Y55T64", "Y_GE65", "Y65T79", "Y_GE80"], dimension: true }
     persons: { type: number, description: "Persons." }
-    year: { type: string, description: "Census year: 2012, 2017 or 2023." }
+    year: { type: string, description: "Census year: 2012, 2017 or 2023.", dimension: true }
 
 - name: FrCommuneGeo
   description: "One commune's administrative geography from geo.api.gouv.fr: name, departement, municipal population and surface (hectares) — density per km2 = population / (surfaceHa / 100). Nationally via (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g), every commune in one call; this is also where commune NAMES come from for national views."
+  examples:
+    - q: which communes have the highest median income
+      cypher: "MATCH (u:FrCommunes {set:'france'})-[:HAS_MEDIAN_INCOME]->(i:FrIncome) WITH i.code AS code, i.value AS income ORDER BY income DESC LIMIT 5 MATCH (g:FrCommuneGeo) WHERE g.code = code RETURN g.name AS commune, g.departement AS departement, code AS insee, income ORDER BY income DESC"
   virtualJoins:
     - anchorLabel: FrCommunes
       relationship: HAS_GEO
@@ -192,6 +200,7 @@
       producer: frCommuneGeoAll
       maxAnchors: 1
       description: "All ~35k communes, one call, a week of cache."
+      implicitDoor: true
   properties:
     key: "The anchor key."
     code: { type: string, description: "INSEE commune code." }

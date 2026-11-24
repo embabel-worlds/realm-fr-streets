@@ -1,0 +1,61 @@
+# tests/questions.yml — the natural-language battery (realm-spec README, `tests/`).
+#
+# The questions a person actually types at this realm — in English or French — with what a
+# correct answer must satisfy. Run by tests/verify.sh through the ask surface. `matchesView`
+# reconciles a FIGURE against the realm's own view; `nonEmpty` / `minRows` are the floor
+# where no stable reference exists. `mustConstrain` (this realm's addition) asserts the
+# generated query pins a property a correct answer cannot leave open — e.g. life expectancy
+# is published for women and men separately, and a query that pools them answers a
+# different question (2026-10-06: R² 0.05 "income barely matters", against r = 0.62 per sex).
+#
+# The adversarial half — questions the DATA cannot answer — lives in verify.sh, because its
+# assertion is about the generated query's honesty, not a figure.
+#
+# Every question that ever disappointed a user becomes a permanent entry here.
+
+# ── Départements ───────────────────────────────────────────────────────────────────
+- question: "Which departement has the highest life expectancy?"
+  expect:
+    matchesView: { name: FrDeptLifeExpectancyRows, column: lifeExpectancy, args: { sex: F, year: 2024 } }
+    mustConstrain: [{ label: FrDeptLifeExpectancy, property: sex }, { label: FrDeptLifeExpectancy, property: year }]
+- question: "Do people in rich departements live longer?"
+  expect:
+    nonEmpty: true
+    mustConstrain: [{ label: FrDeptLifeExpectancy, property: sex }, { label: FrDeptLifeExpectancy, property: year }]
+- question: "What predicts life expectancy across French departements?"
+  expect:
+    nonEmpty: true
+    mustConstrain: [{ label: FrDeptLifeExpectancy, property: sex }]
+- question: "Which departement has the most immigrants?"
+  expect: { nonEmpty: true }
+- question: "Which French departements have the highest burglary rate in 2025?"
+  expect:
+    matchesView: { name: FrDepartementLeague, column: ratePer1000, args: { indicator: "Cambriolages de logement", year: 2025 } }
+- question: "Quel département a la plus forte espérance de vie ?"
+  expect:
+    matchesView: { name: FrDeptLifeExpectancyRows, column: lifeExpectancy, args: { sex: F, year: 2024 } }
+    mustConstrain: [{ label: FrDeptLifeExpectancy, property: sex }]
+
+# ── One commune ────────────────────────────────────────────────────────────────────
+- question: "What is the median income in Strasbourg?"
+  expect:
+    matchesView: { name: FrCommuneSnapshot, column: medianIncome, args: { code: "67482" } }
+- question: "Who is the mayor of Strasbourg?"
+  expect: { nonEmpty: true }
+- question: "How did Strasbourg vote in the 2024 European elections?"
+  expect: { nonEmpty: true }
+- question: "What is the unemployment rate in Strasbourg?"
+  expect: { nonEmpty: true }
+- question: "Quel est le revenu médian à Strasbourg ?"
+  expect:
+    matchesView: { name: FrCommuneSnapshot, column: medianIncome, args: { code: "67482" } }
+
+# ── Watched places ─────────────────────────────────────────────────────────────────
+- question: "How many French places am I watching?"
+  expect: { countOfView: FrPlaceDossier }
+
+# ── Across the border ──────────────────────────────────────────────────────────────
+- question: "Is GDP per head higher in the Bas-Rhin or the Ortenaukreis?"
+  expect: { minRows: 1 }
+- question: "How does unemployment in Alsace compare with Germany?"
+  expect: { minRows: 1 }

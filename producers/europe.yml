@@ -168,3 +168,17 @@
   compute: {country: 'substring(r.code, 0, 2)', id: 'r.code'}
   fileCacheSeconds: 2592000
   cache: {kind: ttl, seconds: 2592000}
+
+# The same file WHOLE — every region's name, for a question that names a place ("the Bas-Rhin",
+# "Freiburg") rather than a NUTS code. No keyColumn: the anchor key stamps every row.
+- name: euRegionNamesAll
+  kind: tabular
+  url: "https://gisco-services.ec.europa.eu/distribution/v2/nuts/csv/NUTS_AT_2024.csv"
+  format: csv
+  keyAs: key
+  maxRows: 5000
+  maxRowsPerKey: 5000
+  project: {code: NUTS_ID, name: NUTS_NAME, latinName: NAME_LATN}
+  compute: {country: 'substring(r.code, 0, 2)', id: 'r.code'}
+  fileCacheSeconds: 2592000
+  cache: {kind: ttl, seconds: 2592000}

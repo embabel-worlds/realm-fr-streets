@@ -1,0 +1,105 @@
+# ── Life expectancy across departements ─────────────────────────────────────
+# INSEE life expectancy at birth (women and men separately — no both-sexes
+# figure is published at this level) beside the departement covariates the
+# crime model already uses, plus the share aged 65+. ~100 rows, so these are
+# PLAIN joins on the departement code — no collect/UNWIND regrouping.
+# Association across departements, never a statement about any person: a
+# departement's life expectancy is where people DIE, after lives often lived
+# elsewhere (retirement migration to the coast and the south is large).
+
+- name: FrDeptLifeExpectancyRows
+  description: "Life expectancy at birth for every departement (INSEE, women or men — never averaged, INSEE publishes no both-sexes figure here) beside its median standard of living, poverty rate, Gini index, interdecile ratio D9/D1, population density, share aged 65+, share aged 15-24 and immigrant share. One row per departement, ranked by life expectancy — 'which departement lives longest', 'where is life expectancy lowest', and the design matrix FrLifeExpectancyModel fits. Metropolitan France and La Reunion (Filosofi's coverage)."
+  params:
+    sex: { type: string, default: "F", description: "'F' women or 'M' men." }
+    year: { type: int, default: 2024, description: "1975-2025 (2023 onward provisional)." }
+  cypher: |
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH g.departement AS dep, sum(toFloat(g.surfaceHa)) / 100.0 AS km2, sum(toFloat(g.population)) AS gpop
+    WITH collect({code: dep, density: gpop / km2}) AS densities
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_LIFE_EXPECTANCY]->(l:FrDeptLifeExpectancy)
+    WHERE l.year = toString($year) AND l.sex = $sex
+    WITH densities, d, l.code AS code, l.years AS life, l.status AS status
+    MATCH (d)-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WHERE i.code = code AND i.measure IN ['MED_SL', 'PR_MD60', 'GI_SL', 'IR_D9_D1_SL']
+    WITH densities, d, code, life, status,
+         max(CASE WHEN i.measure = 'MED_SL' THEN toFloat(i.value) END) AS income,
+         max(CASE WHEN i.measure = 'PR_MD60' THEN toFloat(i.value) END) AS poverty,
+         max(CASE WHEN i.measure = 'GI_SL' THEN toFloat(i.value) END) AS gini,
+         max(CASE WHEN i.measure = 'IR_D9_D1_SL' THEN toFloat(i.value) END) AS d9d1
+    MATCH (d)-[:HAS_DEPT_IMMIGRATION]->(im:FrDeptImmigration)
+    WHERE im.code = code
+    WITH densities, d, code, life, status, income, poverty, gini, d9d1,
+         max(CASE WHEN im.status = '1' THEN toFloat(im.persons) END) AS immi,
+         max(CASE WHEN im.status = '_T' THEN toFloat(im.persons) END) AS residents
+    MATCH (d)-[:HAS_DEPT_POPULATION]->(p:FrDeptPopulation)
+    WHERE p.code = code
+    WITH densities, d, code, life, status, income, poverty, gini, d9d1, immi, residents,
+         max(CASE WHEN p.ageBand = '_T' THEN toFloat(p.persons) END) AS pop,
+         max(CASE WHEN p.ageBand = 'Y_GE65' THEN toFloat(p.persons) END) AS older,
+         max(CASE WHEN p.ageBand = 'Y15T24' THEN toFloat(p.persons) END) AS young
+    MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WHERE n.code = code
+    WITH code, n.name AS departement, life, status, income, poverty, gini, d9d1,
+         head([x IN densities WHERE x.code = code | x.density]) AS density,
+         100.0 * older / pop AS olderPct, 100.0 * young / pop AS youngPct, 100.0 * immi / residents AS immigrantPct
+    WHERE income IS NOT NULL AND poverty IS NOT NULL AND gini IS NOT NULL AND density IS NOT NULL
+      AND olderPct IS NOT NULL AND immigrantPct IS NOT NULL
+    RETURN code, departement, life AS lifeExpectancy, status, income, poverty, gini, d9d1,
+           round(density) AS density, round(olderPct * 10) / 10 AS olderPct, round(youngPct * 10) / 10 AS youngPct,
+           round(immigrantPct * 10) / 10 AS immigrantPct
+    ORDER BY lifeExpectancy DESC
+
+- name: FrLifeExpectancyModel
+  description: "What PREDICTS life expectancy across French departements — a least-squares fit of INSEE life expectancy at birth (women or men) on whichever predictors are switched on: median standard of living, poverty rate, INEQUALITY (Gini), log population density, the share aged 65+ and the immigrant share. Standardized betas, R², each predictor's solo correlation (<name>Alone, with a 95% interval), and the departements furthest above and below prediction by name. Predictors return as x1..xn in the fixed order income, poverty, inequality, density, older, immigrants, switched-off ones dropped. Answers 'do people in rich departements live longer', 'what explains life expectancy'. Association across ~97 departements with correlated predictors — read the pattern, not the second decimal; never causation and never a statement about any person or group. Life expectancy is measured where people die: retirement migration moves long-lived people toward the coast and the south."
+  params:
+    sex: { type: string, default: "F", description: "'F' women or 'M' men." }
+    year: { type: int, default: 2024, description: "1975-2025 (2023 onward provisional)." }
+    income: { type: boolean, default: true, description: "Include median standard of living." }
+    poverty: { type: boolean, default: true, description: "Include poverty rate." }
+    inequality: { type: boolean, default: true, description: "Include the Gini index." }
+    density: { type: boolean, default: true, description: "Include log population density." }
+    older: { type: boolean, default: true, description: "Include the share aged 65+." }
+    immigrants: { type: boolean, default: true, description: "Include the immigrant share (an area measure, never a statement about immigrants)." }
+  cypher: |
+    MATCH (u:FrCommunes {set:'france'})-[:HAS_GEO]->(g:FrCommuneGeo)
+    WITH g.departement AS dep, sum(toFloat(g.surfaceHa)) / 100.0 AS km2, sum(toFloat(g.population)) AS gpop
+    WITH collect({code: dep, density: gpop / km2}) AS densities
+    MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_LIFE_EXPECTANCY]->(l:FrDeptLifeExpectancy)
+    WHERE l.year = toString($year) AND l.sex = $sex
+    WITH densities, d, l.code AS code, l.years AS life
+    MATCH (d)-[:HAS_DEPT_INCOME]->(i:FrDeptIncome)
+    WHERE i.code = code AND i.measure IN ['MED_SL', 'PR_MD60', 'GI_SL']
+    WITH densities, d, code, life,
+         max(CASE WHEN i.measure = 'MED_SL' THEN toFloat(i.value) END) AS income,
+         max(CASE WHEN i.measure = 'PR_MD60' THEN toFloat(i.value) END) AS poverty,
+         max(CASE WHEN i.measure = 'GI_SL' THEN toFloat(i.value) END) AS gini
+    MATCH (d)-[:HAS_DEPT_IMMIGRATION]->(im:FrDeptImmigration)
+    WHERE im.code = code
+    WITH densities, d, code, life, income, poverty, gini,
+         max(CASE WHEN im.status = '1' THEN toFloat(im.persons) END) AS immi,
+         max(CASE WHEN im.status = '_T' THEN toFloat(im.persons) END) AS residents
+    MATCH (d)-[:HAS_DEPT_POPULATION]->(p:FrDeptPopulation)
+    WHERE p.code = code
+    WITH densities, d, code, life, income, poverty, gini, immi, residents,
+         max(CASE WHEN p.ageBand = '_T' THEN toFloat(p.persons) END) AS pop,
+         max(CASE WHEN p.ageBand = 'Y_GE65' THEN toFloat(p.persons) END) AS older
+    MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement)
+    WHERE n.code = code
+    WITH n.name + ' (' + code + ')' AS label, life, income, poverty, gini,
+         head([x IN densities WHERE x.code = code | x.density]) AS density,
+         100.0 * older / pop AS olderPct, 100.0 * immi / residents AS immigrantPct
+    WHERE income IS NOT NULL AND poverty IS NOT NULL AND gini IS NOT NULL AND density IS NOT NULL
+      AND olderPct IS NOT NULL AND immigrantPct IS NOT NULL
+    WITH label, life, income, poverty, gini, log(density) AS logDensity, olderPct, immigrantPct, [x IN [
+           CASE WHEN $income     THEN income END,
+           CASE WHEN $poverty    THEN poverty END,
+           CASE WHEN $inequality THEN gini END,
+           CASE WHEN $density    THEN log(density) END,
+           CASE WHEN $older      THEN olderPct END,
+           CASE WHEN $immigrants THEN immigrantPct END
+         ] WHERE x IS NOT NULL] AS predictors
+    RETURN regress(predictors, life, label) AS model,
+           correlate(income, life) AS incomeAlone, correlate(poverty, life) AS povertyAlone,
+           correlate(gini, life) AS inequalityAlone, correlate(logDensity, life) AS densityAlone,
+           correlate(olderPct, life) AS olderAlone, correlate(immigrantPct, life) AS immigrantsAlone,
+           count(*) AS departements

@@ -331,6 +331,90 @@
      }
     }
    }
+  },
+  "/data/DS_DECES_MORTALITE_SERIES": {
+   "get": {
+    "operationId": "frMortality",
+    "summary": "Deaths and mortality, long series — incl. life expectancy by departement (1975-2025)",
+    "description": "EC_MEASURE=LEXPEC life expectancy (years) at AGE (Y0 = at birth), by SEX (F, M — no both-sexes figure is published at departement level). 2023 onward provisional (OBS_STATUS P).",
+    "parameters": [
+     {
+      "name": "GEO",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string"
+      },
+      "description": "'<vintage>-DEP-<code>' or a bare level ('DEP') for every departement."
+     },
+     {
+      "name": "EC_MEASURE",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "LEXPEC, MOR_RT, MOR_STANDARD_RT, MOR_INF_RT_3Y, ..."
+     },
+     {
+      "name": "AGE",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Y0 = at birth."
+     },
+     {
+      "name": "FREQ",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "A annual."
+     },
+     {
+      "name": "SEX",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "F or M."
+     },
+     {
+      "name": "TIME_PERIOD",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Year."
+     },
+     {
+      "name": "maxResult",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Max observations."
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "JSON",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  }
 }

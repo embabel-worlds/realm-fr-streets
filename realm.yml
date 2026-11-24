@@ -87,3 +87,5 @@ exports:
   - EuRegion
   - EuRegionStat
   - EuRegionName
+  - EuRegions
+  - FrDeptLifeExpectancy

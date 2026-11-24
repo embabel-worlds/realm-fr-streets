@@ -21,7 +21,7 @@
 - name: FrHousingScale
   description: "A literal-seeded scale for the national property statistics — MATCH (s:FrHousingScale {scale:'commune'}) lists every commune's row, {scale:'departement'} every departement's. Nothing persisted."
   properties:
-    scale: { type: string, description: "'commune', 'departement', 'epci' or 'nation'." }
+    scale: { type: string, description: "'commune', 'departement', 'epci' or 'nation'.", values: ["commune", "departement", "epci", "nation", "section"], dimension: true }
 
 - name: FrHousing
   description: "Property prices from the official DVF statistics (Etalab 'Statistiques DVF', every notarised sale over the last 10 half-years, Licence Ouverte): number of sales and median / mean price per m2 for flats ('appartement'), houses ('maison'), both, and commercial premises, for one commune, departement or EPCI. Excludes Alsace-Moselle and Mayotte (not in DVF). Paris, Lyon and Marseille are published per ARRONDISSEMENT (the city row is empty). A median over few sales is noisy — read aptSales/houseSales. Via (c:FrCommune)-[:HAS_HOUSING]->(h), (d:FrDeptRef)-[:HAS_HOUSING]->(h), or nationally (s:FrHousingScale {scale:'commune'})-[:LISTS_HOUSING]->(h)."
@@ -52,7 +52,7 @@
     code: { type: string, description: "INSEE / EPCI code." }
     name: { type: string, description: "Place name." }
     parent: { type: string, description: "Parent code (EPCI for a commune, 'nation' for a departement)." }
-    scale: { type: string, description: "'commune', 'departement', 'epci', 'nation', 'section'." }
+    scale: { type: string, description: "'commune', 'departement', 'epci', 'nation', 'section'.", values: ["commune", "departement", "epci", "nation", "section"], dimension: true }
     aptSales: { type: number, description: "Flat sales." }
     aptMedianM2: { type: number, description: "Median price per m2, flats (EUR)." }
     aptMeanM2: { type: number, description: "Mean price per m2, flats (EUR)." }

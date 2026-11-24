@@ -18,21 +18,33 @@
     - { anchorLabel: EuRegion, relationship: HAS_HOUSEHOLD_INCOME, keyField: code, recordKeyField: geo, producer: euHouseholdIncome, maxAnchors: 200, description: "Disposable household income per inhabitant, PPS (NUTS 2)." }
   properties:
     id: { type: string, description: "indicator:geo:year. Identity.", metadata: { identity: "true" } }
-    indicator: { type: string, description: "gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, lifeExpectancy or householdIncome." }
+    indicator: { type: string, description: "gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, lifeExpectancy or householdIncome.", values: ["gdpPps", "gdpEur", "population", "density", "medianAge", "unemployment", "youthUnemployment", "lifeExpectancy", "householdIncome"] }
     geo: { type: string, description: "NUTS code." }
-    year: { type: string, description: "Reference year." }
+    year: { type: string, description: "Reference year.", dimension: true }
     value: { type: number, description: "The figure." }
     flag: { type: string, description: "Eurostat observation flag: p provisional, e estimated, b break; empty when final." }
     dataset: { type: string, description: "Eurostat dataflow, e.g. 'ESTAT:NAMA_10R_3GDP(1.0)'." }
     unit: { type: string, description: "Eurostat unit code." }
 
+- name: EuRegions
+  description: "A literal-seeded anchor for the whole NUTS list — MATCH (e:EuRegions {set:'europe'}). Nothing persisted."
+  properties:
+    set: { type: string, description: "Always 'europe'.", values: ["europe"], metadata: { identity: "true", default: "europe" } }
+
 - name: EuRegionName
-  description: "A NUTS region's official name and country (NUTS 2024, Eurostat GISCO) — via (r:EuRegion {code})-[:HAS_NAME]->(n)."
+  description: "A NUTS region's official name and country (NUTS 2024, Eurostat GISCO). Find a region BY NAME with a bare MATCH (n:EuRegionName) WHERE n.name = 'Bas-Rhin' (or CONTAINS), then use n.code to reach its statistics through (r:EuRegion {code: <that code>}); or name a known code with (r:EuRegion {code})-[:HAS_NAME]->(n)."
+  examples:
+    - q: what is GDP per head in the Bas-Rhin
+      cypher: "MATCH (n:EuRegionName) WHERE n.name = 'Bas-Rhin' WITH n.code AS code, n.name AS region MATCH (r:EuRegion {code: code})-[:HAS_GDP_PPS]->(s:EuRegionStat) RETURN region, s.year AS year, s.value AS gdpPerHeadPps ORDER BY year DESC LIMIT 1"
+    - q: how does unemployment in Alsace compare with Germany
+      cypher: "MATCH (r:EuRegion) WHERE r.code IN ['FRF1', 'DE'] MATCH (r)-[:HAS_UNEMPLOYMENT]->(s:EuRegionStat) WITH r.code AS code, s.year AS year, s.value AS unemploymentPct ORDER BY year DESC WITH code, head(collect({year: year, value: unemploymentPct})) AS latest RETURN code, latest.year AS year, latest.value AS unemploymentPct"
   virtualJoins:
     - { anchorLabel: EuRegion, relationship: HAS_NAME, keyField: code, recordKeyField: code, producer: euRegionNames, maxAnchors: 200, description: "One row per region." }
+    - { anchorLabel: EuRegions, relationship: LISTS_REGION, keyField: set, recordKeyField: key, producer: euRegionNamesAll, maxAnchors: 1, implicitDoor: true, description: "Every region's name and code, to find a region by name." }
   properties:
     id: { type: string, description: "The NUTS code. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key on the whole-list door."
     code: { type: string, description: "NUTS code." }
     name: { type: string, description: "Name in the national language(s), e.g. 'Valais / Wallis'." }
     latinName: { type: string, description: "Name in Latin script." }
-    country: { type: string, description: "Two-letter country code (EL = Greece, UK = United Kingdom in Eurostat usage)." }
+    country: { type: string, description: "Two-letter country code: FR France, DE Germany, CH Switzerland, LU Luxembourg, BE Belgium, IT Italy, ES Spain (EL = Greece, UK = United Kingdom in Eurostat usage). A country's own totals are the region whose code IS this code (r.code = 'DE')." }

@@ -23,6 +23,7 @@
       producer: frUnemployedAll
       maxAnchors: 1
       description: "Unemployed residents 15+ in every commune, one call, a week of cache."
+      fixes: { status: '2' }
     - anchorLabel: FrCommunes
       relationship: HAS_LABOUR_FORCE
       keyField: set
@@ -30,12 +31,13 @@
       producer: frLabourForceAll
       maxAnchors: 1
       description: "Labour force 15+ in every commune, one call, a week of cache."
+      fixes: { status: 1T2 }
   properties:
     id: { type: string, description: "geo:status. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    status: { type: string, description: "'1' employed, '2' unemployed, '1T2' labour force." }
+    status: { type: string, description: "'1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2').", values: ["1", "2", "1T2"], dimension: true }
     persons: { type: number, description: "Persons (census estimate, fractional)." }
     year: { type: string, description: "Census year (2023)." }
 
@@ -63,6 +65,7 @@
       producer: frNoDiplomaAll
       maxAnchors: 1
       description: "Residents with no qualification, every commune, 2023."
+      fixes: { level: 001T100_RP, year: '2023' }
     - anchorLabel: FrCommunes
       relationship: HAS_GRADUATES
       keyField: set
@@ -70,6 +73,7 @@
       producer: frGraduatesAll
       maxAnchors: 1
       description: "Residents with a higher-education degree, every commune, 2023."
+      fixes: { level: 500T702_RP, year: '2023' }
     - anchorLabel: FrCommunes
       relationship: HAS_EDUCATION_BASE
       keyField: set
@@ -77,14 +81,15 @@
       producer: frDiplomaBaseAll
       maxAnchors: 1
       description: "Non-student population 15+ (the denominator), every commune, 2023."
+      fixes: { level: _T, year: '2023' }
   properties:
     id: { type: string, description: "geo:level:year. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    level: { type: string, description: "INSEE EDUC code (see description)." }
+    level: { type: string, description: "Highest qualification (INSEE EDUC): _T all non-students 15+, 001T100_RP no qualification or primary certificate only, 200_RP brevet, 300_RP CAP/BEP, 350T351_RP baccalaureat, 500_RP short higher education (bac+2), 500T702_RP any higher-education degree, 600_RP bac+3/4, 600T702_RP university 2nd/3rd cycle, 700_RP bac+5 or more. Share of a level = persons(level) / persons('_T').", values: ["_T", "001T100_RP", "200_RP", "300_RP", "350T351_RP", "500_RP", "500T702_RP", "600_RP", "600T702_RP", "700_RP"], dimension: true }
     persons: { type: number, description: "Persons." }
-    year: { type: string, description: "Census year: 2012, 2017 or 2023." }
+    year: { type: string, description: "Census year: 2012, 2017 or 2023.", dimension: true }
 
 # ── European elections 2024 ──────────────────────────────────────────────────
 - name: FrEuroVote

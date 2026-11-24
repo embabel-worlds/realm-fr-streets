@@ -61,3 +61,23 @@
   args: {}
   project: {code: code, name: nom, region: codeRegion}
   cache: {kind: ttl, seconds: 2592000}
+
+# INSEE life expectancy at birth, every departement, women and men separately
+# (INSEE publishes no both-sexes figure at this level), 1975-2025 — one call,
+# ~10,000 observations. 2023 onward is provisional (status 'P').
+- name: frDeptLifeExpectancy
+  kind: remote
+  operation: frMortality
+  records: $.observations[*]
+  keyTemplate: '{key}'
+  echoKeyAs: key
+  maxKeysPerCall: 1
+  args: {GEO: DEP, EC_MEASURE: LEXPEC, AGE: Y0, FREQ: A, maxResult: '20000'}
+  project: {geo: dimensions.GEO, sex: dimensions.SEX, year: dimensions.TIME_PERIOD, years: measures.OBS_VALUE_NIVEAU.value, status: attributes.OBS_STATUS}
+  compute: {code: 'split(r.geo, ''-'')[2]', id: 'r.geo + '':'' + r.sex + '':'' + r.year'}
+  # Filters nothing at the source, deliberately. Melodi CAN filter by
+  # TIME_PERIOD and SEX, but rejects an empty parameter, and a pushdown
+  # qualifier cannot be left out when a query does not filter on it — so the
+  # whole series (~10k rows, one call) is fetched and the graph filters.
+  pushdown: []
+  cache: {kind: ttl, seconds: 604800}
