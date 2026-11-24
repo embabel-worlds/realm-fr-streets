@@ -20,7 +20,7 @@
     id: { type: string, description: "indicator:geo:year. Identity.", metadata: { identity: "true" } }
     indicator: { type: string, description: "gdpPps, gdpEur, population, density, medianAge, unemployment, youthUnemployment, lifeExpectancy or householdIncome.", values: ["gdpPps", "gdpEur", "population", "density", "medianAge", "unemployment", "youthUnemployment", "lifeExpectancy", "householdIncome"] }
     geo: { type: string, description: "NUTS code." }
-    year: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. Reference year." }
+    year: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Reference year." }
     value: { type: number, description: "The figure, in the unit its measure or indicator states (EUR a year, %, an index, persons or a ratio)." }
     flag: { type: string, description: "Eurostat observation flag: p provisional, e estimated, b break; empty when final." }
     dataset: { type: string, description: "Eurostat dataflow, e.g. 'ESTAT:NAMA_10R_3GDP(1.0)'." }

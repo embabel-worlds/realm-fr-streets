@@ -35,8 +35,8 @@
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    status: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. '1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2').", values: ["1", "2", "1T2"] }
-    persons: { type: number, description: "Persons (census estimate, fractional)." }
+    status: { type: string, description: "An axis to filter or group on, never sum across: one value per row. '1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2').", values: ["1", "2", "1T2"] }
+    persons: { type: number, unit: persons, description: "Persons (census estimate, fractional)." }
     year: { type: string, description: "Census year (2023)." }
 
 - name: FrEducation
@@ -82,9 +82,9 @@
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    level: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. Highest qualification (INSEE EDUC): _T all non-students 15+, 001T100_RP no qualification or primary certificate only, 200_RP brevet, 300_RP CAP/BEP, 350T351_RP baccalaureat, 500_RP short higher education (bac+2), 500T702_RP any higher-education degree, 600_RP bac+3/4, 600T702_RP university 2nd/3rd cycle, 700_RP bac+5 or more. Share of a level = persons(level) / persons('_T').", values: ["_T", "001T100_RP", "200_RP", "300_RP", "350T351_RP", "500_RP", "500T702_RP", "600_RP", "600T702_RP", "700_RP"] }
-    persons: { type: number, description: "Number of persons in this row's slice (census estimate, can be fractional)." }
-    year: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. Census year: 2012, 2017 or 2023." }
+    level: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Highest qualification (INSEE EDUC): _T all non-students 15+, 001T100_RP no qualification or primary certificate only, 200_RP brevet, 300_RP CAP/BEP, 350T351_RP baccalaureat, 500_RP short higher education (bac+2), 500T702_RP any higher-education degree, 600_RP bac+3/4, 600T702_RP university 2nd/3rd cycle, 700_RP bac+5 or more. Share of a level = persons(level) / persons('_T').", values: ["_T", "001T100_RP", "200_RP", "300_RP", "350T351_RP", "500_RP", "500T702_RP", "600_RP", "600T702_RP", "700_RP"] }
+    persons: { type: number, unit: persons, description: "Number of persons in this row's slice (census estimate, can be fractional)." }
+    year: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Census year: 2012, 2017 or 2023." }
 
 # ── European elections 2024 ──────────────────────────────────────────────────
 - name: FrEuroVote

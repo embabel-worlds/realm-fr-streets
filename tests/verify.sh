@@ -304,6 +304,32 @@ for label, where, filters in (("every year", "", {}), ("2024 only", " WHERE c.ye
     if not ok:
         fails.append(f"source: Biarritz crime rows, {label}: realm {got} vs data.gouv {want}, apiCalls {calls}")
 
+# ── PINNED SLICES: each national join returns only the slice it claims ────────────
+# These joins are one INSEE call each for every commune, and their producers ASK for one slice
+# (EMPSTA_ENQ=2, FILOSOFI_MEASURE=MED_SL, ...). Nothing in the join filters afterwards, so the
+# rows must already be that slice: every distinct value of the pinned property is the one value.
+PINNED = [
+    ("HAS_UNEMPLOYED", "FrWork", {"status": "2"}),
+    ("HAS_LABOUR_FORCE", "FrWork", {"status": "1T2"}),
+    ("HAS_NO_DIPLOMA", "FrEducation", {"level": "001T100_RP", "year": "2023"}),
+    ("HAS_GRADUATES", "FrEducation", {"level": "500T702_RP", "year": "2023"}),
+    ("HAS_EDUCATION_BASE", "FrEducation", {"level": "_T", "year": "2023"}),
+    ("HAS_MEDIAN_INCOME", "FrIncome", {"measure": "MED_SL"}),
+    ("HAS_POVERTY", "FrIncome", {"measure": "PR_MD60"}),
+    ("HAS_IMMIGRANTS", "FrImmigration", {"status": "1"}),
+    ("HAS_TOTAL_POP", "FrPopulation", {"ageBand": "_T", "year": "2023"}),
+    ("HAS_YOUNG_POP", "FrPopulation", {"ageBand": "Y15T24", "year": "2023"}),
+]
+for rel, label, pins in PINNED:
+    cols = ", ".join(f"collect(DISTINCT toString(x.{k})) AS {k}" for k in pins)
+    d = realm(f"MATCH (u:FrCommunes {{set: 'france'}})-[:{rel}]->(x:{label}) RETURN count(x) AS n, {cols}")
+    row = (d.get("rows") or [{}])[0]
+    seen = {k: sorted(v for v in (row.get(k) or []) if v is not None) for k in pins}
+    ok = (row.get("n") or 0) > 1000 and all(seen[k] == [v] for k, v in pins.items())
+    print(f"{'ok  ' if ok else 'FAIL'} pinned: {rel} -> {row.get('n')} rows, {seen}")
+    if not ok:
+        fails.append(f"pinned: {rel} returned {seen}, wanted {pins}")
+
 print()
 if fails:
     print(f"{len(fails)} FAILURE(S):")

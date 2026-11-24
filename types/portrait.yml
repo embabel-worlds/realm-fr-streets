@@ -21,7 +21,7 @@
 - name: FrHousingScale
   description: "A literal-seeded scale for the national property statistics — MATCH (s:FrHousingScale {scale:'commune'}) lists every commune's row, {scale:'departement'} every departement's. Nothing persisted."
   properties:
-    scale: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. 'commune', 'departement', 'epci' or 'nation'.", values: ["commune", "departement", "epci", "nation", "section"] }
+    scale: { type: string, description: "An axis to filter or group on, never sum across: one value per row. 'commune', 'departement', 'epci' or 'nation'.", values: ["commune", "departement", "epci", "nation", "section"] }
 
 - name: FrHousing
   description: "One DVF statistics row (one place at one scale), identified by its synthesized `id`. Property prices from the official DVF statistics (Etalab 'Statistiques DVF', every notarised sale over the last 10 half-years, Licence Ouverte): number of sales and median / mean price per m2 for flats ('appartement'), houses ('maison'), both, and commercial premises, for one commune, departement or EPCI. Excludes Alsace-Moselle and Mayotte (not in DVF). Paris, Lyon and Marseille are published per ARRONDISSEMENT (the city row is empty). A median over few sales is noisy — read aptSales/houseSales. Via (c:FrCommune)-[:HAS_HOUSING]->(h), (d:FrDeptRef)-[:HAS_HOUSING]->(h), or nationally (s:FrHousingScale {scale:'commune'})-[:LISTS_HOUSING]->(h)."
@@ -52,15 +52,15 @@
     code: { type: string, description: "INSEE / EPCI code." }
     name: { type: string, description: "Place name." }
     parent: { type: string, description: "Parent code (EPCI for a commune, 'nation' for a departement)." }
-    scale: { type: string, description: "A dimension, one value per row: filter or group on it, never sum across it. 'commune', 'departement', 'epci', 'nation', 'section'.", values: ["commune", "departement", "epci", "nation", "section"] }
-    aptSales: { type: number, description: "Flat sales." }
-    aptMedianM2: { type: number, description: "Median price per m2, flats (EUR)." }
-    aptMeanM2: { type: number, description: "Mean price per m2, flats (EUR)." }
-    houseSales: { type: number, description: "Number of notarised house sales (whole houses) over the period DVF covers." }
-    houseMedianM2: { type: number, description: "Median price per m2, houses (EUR)." }
-    houseMeanM2: { type: number, description: "Mean price per m2, houses (EUR)." }
-    allSales: { type: number, description: "Flat + house sales." }
-    allMedianM2: { type: number, description: "Median price per m2, flats and houses together (EUR)." }
+    scale: { type: string, description: "An axis to filter or group on, never sum across: one value per row. 'commune', 'departement', 'epci', 'nation', 'section'.", values: ["commune", "departement", "epci", "nation", "section"] }
+    aptSales: { type: number, unit: sales, description: "Flat sales." }
+    aptMedianM2: { type: number, unit: EUR per m2, currency: EUR, description: "Median price per m2, flats (EUR)." }
+    aptMeanM2: { type: number, unit: EUR per m2, currency: EUR, description: "Mean price per m2, flats (EUR)." }
+    houseSales: { type: number, unit: sales, description: "Number of notarised house sales (whole houses) over the period DVF covers." }
+    houseMedianM2: { type: number, unit: EUR per m2, currency: EUR, description: "Median price per m2, houses (EUR)." }
+    houseMeanM2: { type: number, unit: EUR per m2, currency: EUR, description: "Mean price per m2, houses (EUR)." }
+    allSales: { type: number, unit: sales, description: "Flat + house sales." }
+    allMedianM2: { type: number, unit: EUR per m2, currency: EUR, description: "Median price per m2, flats and houses together (EUR)." }
 
 - name: FrCommuneInfo
   description: "One commune's geography from geo.api.gouv.fr by INSEE code: name, departement, region, municipal population, surface (ha), postal codes, centre point. Via (c:FrCommune {code:'80021'})-[:HAS_INFO]->(i). Arrondissements are not communes here (no row)."
@@ -78,6 +78,6 @@
     departement: { type: string, description: "Departement code." }
     region: { type: string, description: "Region code." }
     population: { type: number, description: "Municipal population." }
-    surfaceHa: { type: number, description: "Surface in hectares." }
+    surfaceHa: { type: number, unit: hectares, description: "Surface in hectares." }
     postcodes: { description: "Postal codes (list)." }
     centre: { description: "Centre point [lon, lat] (list)." }
