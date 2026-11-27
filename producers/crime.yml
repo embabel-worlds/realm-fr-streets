@@ -3,7 +3,6 @@
 # (5.2M rows: commune x year x indicator). data.gouv's tabular API serves the
 # same resource with real filters, so both doors fetch only what they need.
 # `id` = commune:year:indicator, so both doors converge on one node per row.
-# No pushdown: neither door relies on it (see frCrimeSlice).
 
 # Per watched place: every year and indicator, up to 10 places per call.
 - name: frCrimeAtPlaces
@@ -19,6 +18,12 @@
     population: insee_pop, dwellings: insee_log}
   compute: {id: 'r.code + '':'' + toString(r.year) + '':'' + r.indicator'}
   # An annual release (July, with a spring enrichment). A day is polite.
+  # Measured 2026-11-25 on the data.gouv tabular API: a commune's 150 rows (10 years x 15
+  # indicators) narrow to 15 with annee__exact and to 10 with indicateur__exact, so "burglary
+  # in my places" or "crime in 2024" reads one page instead of up to eight.
+  pushdown:
+    - { property: year, op: EQUALS, argPath: annee__exact, clause: "{value}", valuePattern: '^(\d{4})$' }
+    - { property: indicator, op: EQUALS, argPath: indicateur__exact, clause: "{value}" }
   cache: {kind: ttl, seconds: 86400, negativeTtlSeconds: 3600}
 
 # National cross-section, one SLICE per (indicator token, year, population
@@ -43,4 +48,7 @@
   project: {code: CODGEO_2026, year: annee, indicator: indicateur, unit: unite_de_compte, count: nombre, ratePer1000: taux_pour_mille, published: est_diffuse, deptAvgRateForSuppressed: complement_info_taux,
     population: insee_pop, dwellings: insee_log}
   compute: {id: 'r.code + '':'' + toString(r.year) + '':'' + r.indicator'}
+  # The slice key (label token, year, population floor) IS the filter, sent as the key's own
+  # arguments; nothing else a query says narrows it further.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}

@@ -3,7 +3,7 @@
 # refits client-side as predictors are toggled (milliseconds, not a 20 s
 # server regroup per click); FrWhatBestPredictsCrime stays the reference fit.
 - name: FrModelRows
-  description: "The French crime model's design matrix: one row per commune in the fit — INSEE code, name, departement, recorded-crime rate (y) and the six predictors UNROUNDED (median income, poverty rate, density per km2, 15-24 share %, immigrant share %, population) — the exact values FrWhatBestPredictsCrime regresses, for a client that refits as predictors are switched. For display use FrCommunesRanked."
+  description: "The French crime model's design matrix. One row per commune in the fit — INSEE code, name, departement, recorded-crime rate (y) and the six predictors UNROUNDED (median income, poverty rate, density per km2, 15-24 share %, immigrant share %, population) — the exact values FrWhatBestPredictsCrime regresses, for a client that refits as predictors are switched. For display use FrCommunesRanked. Communes above the population floor only; it states no model result."
   params:
     indicator: { type: string, default: "Cambriolages de logement", description: "SSMSI indicator label." }
     year: { type: int, default: 2025, description: "2016-2025." }

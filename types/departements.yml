@@ -7,7 +7,7 @@
 - name: FrDepartements
   description: "A literal-seeded national anchor for departement-level covariates — MATCH (d:FrDepartements {set:'france'}) mints it per query; every departement's Filosofi income and inequality, census immigration and age, and name hang off it. Nothing persisted."
   properties:
-    set: { type: string, description: "The set literal, always 'france'." }
+    set: { type: string, description: "The set literal, always 'france'.", values: ["france"], metadata: { identity: "true", default: "france" } }
 
 - name: FrDeptCrimeSlice
   description: "A literal-seeded departement crime slice — MATCH (s:FrDeptCrimeSlice {slice:'Cambriolages'}) fetches EVERY departement and EVERY year 2016-2025 for indicators whose label contains that space-free word (the engine refuses keys with spaces). Filter c.indicator to the exact label afterwards: 'hors' also matches 'Usage de stupéfiants (hors AFD)', 'Usage' matches three labels. Tokens: Cambriolages, intrafamiliales, hors, sexuelles, armes, violents, personnes, véhicule, dans, accessoires, Destructions, Usage, AFD, Trafic, Escroqueries, Homicides, Tentatives."
@@ -15,7 +15,7 @@
     slice: { type: string, description: "A space-free substring of the indicator label." }
 
 - name: FrDeptCrime
-  description: "One departement's police- and gendarmerie-RECORDED crime for one indicator and year (SSMSI base departementale, 2016-2025, Licence Ouverte) — COMPLETE: no suppression, every departement, plus Homicides and Tentatives d'homicide which the commune base lacks. Via (s:FrDeptCrimeSlice {slice:'<token>'})-[:LISTS_DEPT_CRIME]->(c). Rate per 1,000 residents (burglary: per 1,000 dwellings)."
+  description: "Identified by `id` = `<departement>:<year>:<indicator>`. One departement's police- and gendarmerie-RECORDED crime for one indicator and year (SSMSI base departementale, 2016-2025, Licence Ouverte) — COMPLETE: no suppression, every departement, plus Homicides and Tentatives d'homicide which the commune base lacks. Via (s:FrDeptCrimeSlice {slice:'<token>'})-[:LISTS_DEPT_CRIME]->(c). Rate per 1,000 residents (burglary: per 1,000 dwellings)."
   virtualJoins:
     - anchorLabel: FrDeptCrimeSlice
       relationship: LISTS_DEPT_CRIME
@@ -32,16 +32,16 @@
     key: "The slice token that fetched the row."
     departement: { type: string, description: "Departement code ('01', '2A', '971')." }
     region: { type: string, description: "Region code." }
-    year: { type: int, description: "2016-2025." }
-    indicator: { type: string, description: "SSMSI indicator label, verbatim." }
+    year: { type: int, description: "An axis to filter or group on, never sum across: one value per row. 2016-2025." }
+    indicator: { type: string, description: "An axis to filter or group on, never sum across: one value per row. SSMSI indicator label, verbatim." }
     unit: { type: string, description: "What is counted (Victime, Infraction, ...)." }
-    count: { type: number, description: "Recorded facts." }
-    ratePer1000: { type: number, description: "Per 1,000 residents (burglary: per 1,000 dwellings)." }
+    count: { type: number, unit: recorded facts, description: "Recorded facts." }
+    ratePer1000: { type: number, unit: 'per 1,000 residents (burglary: per 1,000 dwellings)', description: "Per 1,000 residents (burglary: per 1,000 dwellings)." }
     population: { type: number, description: "INSEE population." }
     dwellings: { type: number, description: "INSEE dwellings." }
 
 - name: FrDepartement
-  description: "A departement's name and region (geo.api.gouv.fr), via (d:FrDepartements {set:'france'})-[:HAS_DEPT_NAME]->(n)."
+  description: "One departement, identified by its `code`: A departement's name and region (geo.api.gouv.fr), via (d:FrDepartements {set:'france'})-[:HAS_DEPT_NAME]->(n)."
   virtualJoins:
     - anchorLabel: FrDepartements
       relationship: HAS_DEPT_NAME
@@ -50,6 +50,7 @@
       producer: frDepartementNames
       maxAnchors: 1
       description: "All 101 departements, one call."
+      implicitDoor: true
   properties:
     key: "The anchor key."
     code: { type: string, description: "Departement code.", metadata: { identity: "true" } }
@@ -57,7 +58,7 @@
     region: { type: string, description: "Region code." }
 
 - name: FrDeptIncome
-  description: "INSEE Filosofi 2023 for one departement, one measure per row: MED_SL median standard of living (EUR/yr), PR_MD60 poverty rate (%), GI_SL Gini index (0-1, inequality), IR_D9_D1_SL interdecile ratio D9/D1, S80S20_SL, deciles D1_SL..D9_SL, and income-composition shares (S_SOC_BEN_DI = social benefits share of disposable income, etc.). Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i). Metropolitan France and La Reunion only."
+  description: "Identified by `id` = `<geo>:<measure>`. INSEE Filosofi 2023 for one departement, one measure per row: MED_SL median standard of living (EUR/yr), PR_MD60 poverty rate (%), GI_SL Gini index (0-1, inequality), IR_D9_D1_SL interdecile ratio D9/D1, S80S20_SL, deciles D1_SL..D9_SL, and income-composition shares (S_SOC_BEN_DI = social benefits share of disposable income, etc.). Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_INCOME]->(i). Metropolitan France and La Reunion only."
   virtualJoins:
     - anchorLabel: FrDepartements
       relationship: HAS_DEPT_INCOME
@@ -66,16 +67,17 @@
       producer: frDeptFilosofi
       maxAnchors: 1
       description: "Every Filosofi measure for every departement (~2,600 rows), one call, a week of cache."
+      implicitDoor: true
   properties:
     id: { type: string, description: "geo:measure. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO, e.g. '2026-DEP-80'." }
     code: { type: string, description: "Departement code parsed from geo." }
-    measure: { type: string, description: "Filosofi measure code." }
-    value: { type: number, description: "The figure." }
+    measure: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Filosofi measure code: MED_SL median standard of living (EUR/yr), PR_MD60 poverty rate (%, below 60% of median), GI_SL Gini index of inequality (0-1), IR_D9_D1_SL interdecile ratio D9/D1, S80S20_SL S80/S20 ratio, IQR_SL interquartile ratio, Q1_SL/Q3_SL quartiles, D1_SL..D9_SL deciles (EUR/yr), S_* shares of disposable income by source (salaries, unemployment, pensions, benefits, taxes). One measure per row.", values: ["MED_SL", "PR_MD60", "GI_SL", "IR_D9_D1_SL", "S80S20_SL", "IQR_SL", "Q1_SL", "Q3_SL", "D1_SL", "D2_SL", "D3_SL", "D4_SL", "D6_SL", "D7_SL", "D8_SL", "D9_SL", "S_EI_DI", "S_EI_DI_SAL", "S_EI_DI_N_SAL", "S_EI_DI_UNE", "S_RET_PEN_DI", "S_INC_ASS_DI", "S_SOC_BEN_DI", "S_SOC_BEN_DI_FAM_BEN", "S_SOC_BEN_DI_MIN_SOC", "S_SOC_BEN_DI_HOU_BEN", "S_DIR_TAX_DI"] }
+    value: { type: number, description: "The figure, in the unit its measure or indicator states (EUR a year, %, an index, persons or a ratio)." }
 
 - name: FrDeptImmigration
-  description: "Census 2023 population by immigration status for one departement ('1' immigrant = born abroad and not French at birth, '0' non-immigrant, '_T' total). France collects no ethnic statistics. Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_IMMIGRATION]->(m)."
+  description: "Identified by `id` = `<geo>:<status>`. Census 2023 population by immigration status for one departement ('1' immigrant = born abroad and not French at birth, '0' non-immigrant, '_T' total). France collects no ethnic statistics. Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_IMMIGRATION]->(m)."
   virtualJoins:
     - anchorLabel: FrDepartements
       relationship: HAS_DEPT_IMMIGRATION
@@ -83,17 +85,21 @@
       recordKeyField: key
       producer: frDeptImmigration
       maxAnchors: 1
-      description: "All departements, one call."
+      description: "Population by immigration status for every departement from ONE INSEE Melodi call (census 2023), cached a week: filter status '1' for immigrants, '_T' for the total."
+      implicitDoor: true
+  examples:
+    - q: which departement has the most immigrants
+      cypher: "MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_IMMIGRATION]->(m:FrDeptImmigration) WITH m.code AS code, max(CASE WHEN m.status = '1' THEN m.persons END) AS immigrants, max(CASE WHEN m.status = '_T' THEN m.persons END) AS residents MATCH (d2:FrDepartements {set:'france'})-[:HAS_DEPT_NAME]->(n:FrDepartement) WHERE n.code = code RETURN n.name AS departement, round(immigrants) AS immigrants, round(1000.0 * immigrants / residents) / 10.0 AS immigrantPct ORDER BY immigrantPct DESC LIMIT 5"
   properties:
     id: { type: string, description: "geo:status. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "Departement code." }
-    status: { type: string, description: "'1', '0' or '_T'." }
-    persons: { type: number, description: "Persons." }
+    status: { type: string, description: "An axis to filter or group on, never sum across: one value per row. '1' immigrant, '0' non-immigrant, '_T' total. Share = persons('1') / persons('_T').", values: ["1", "0", "_T"] }
+    persons: { type: number, unit: persons, description: "Number of persons in this row's slice (census estimate, can be fractional)." }
 
 - name: FrDeptPopulation
-  description: "Census 2023 population of one departement by age band ('_T' all ages, 'Y15T24', 'Y_GE65', ...). Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_POPULATION]->(p)."
+  description: "Identified by `id` = `<geo>:<ageBand>`. Census 2023 population of one departement by age band ('_T' all ages, 'Y15T24', 'Y_GE65', ...). Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_POPULATION]->(p)."
   virtualJoins:
     - anchorLabel: FrDepartements
       relationship: HAS_DEPT_POPULATION
@@ -102,10 +108,37 @@
       producer: frDeptPopulation
       maxAnchors: 1
       description: "All departements, every age band, census 2023, one call."
+      implicitDoor: true
   properties:
     id: { type: string, description: "geo:ageBand. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "Departement code." }
-    ageBand: { type: string, description: "INSEE AGE code." }
-    persons: { type: number, description: "Persons." }
+    ageBand: { type: string, description: "An axis to filter or group on, never sum across: one value per row. INSEE age band: _T all ages, Y_LT15 under 15, Y_LT20 under 20, Y15T24 aged 15-24, Y20T64 20-64, Y25T39, Y40T54, Y55T64, Y_GE65 65 and over, Y65T79, Y_GE80 80 and over. One band per row; bands overlap, never sum them.", values: ["_T", "Y_LT15", "Y_LT20", "Y15T24", "Y20T64", "Y25T39", "Y40T54", "Y55T64", "Y_GE65", "Y65T79", "Y_GE80"] }
+    persons: { type: number, unit: persons, description: "Number of persons in this row's slice (census estimate, can be fractional)." }
+
+- name: FrDeptLifeExpectancy
+  description: "Identified by `id` = `<geo>:<sex>:<year>`. INSEE life expectancy AT BIRTH for one departement, one sex, one year (1975-2025; 2023 onward provisional, status 'P', some 2022 revised, 'R'). INSEE publishes women ('F') and men ('M') separately at this level and NO both-sexes figure — never average them into one. Via (d:FrDepartements {set:'france'})-[:HAS_DEPT_LIFE_EXPECTANCY]->(l), every departement in one call; join to FrDeptIncome / FrDeptImmigration / FrDepartement on code. This is the realm's ONLY departement-level health measure; for regions across Europe see EuRegionStat (HAS_LIFE_EXPECTANCY, NUTS 2)."
+  virtualJoins:
+    - anchorLabel: FrDepartements
+      relationship: HAS_DEPT_LIFE_EXPECTANCY
+      keyField: set
+      recordKeyField: key
+      producer: frDeptLifeExpectancy
+      maxAnchors: 1
+      description: "Every departement, both sexes separately, every year since 1975 (~10,000 rows, a week of cache)."
+      implicitDoor: true
+  examples:
+    - q: which departement has the highest life expectancy
+      cypher: "MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_LIFE_EXPECTANCY]->(l:FrDeptLifeExpectancy) WHERE l.year = '2024' MATCH (d)-[:HAS_DEPT_NAME]->(n:FrDepartement) WHERE n.code = l.code RETURN n.name AS departement, l.sex AS sex, l.years AS lifeExpectancy ORDER BY lifeExpectancy DESC LIMIT 6"
+    - q: do people in richer departements live longer
+      cypher: "MATCH (d:FrDepartements {set:'france'})-[:HAS_DEPT_LIFE_EXPECTANCY]->(l:FrDeptLifeExpectancy) WHERE l.year = '2024' MATCH (d)-[:HAS_DEPT_INCOME]->(i:FrDeptIncome) WHERE i.measure = 'MED_SL' AND i.code = l.code RETURN l.sex AS sex, correlate(toFloat(i.value), l.years) AS incomeVsLifeExpectancy"
+  properties:
+    id: { type: string, description: "geo:sex:year. Identity.", metadata: { identity: "true" } }
+    key: "The anchor key."
+    geo: { type: string, description: "Melodi GEO, e.g. '2025-DEP-67'." }
+    code: { type: string, description: "Departement code parsed from geo ('67', '2A', '974')." }
+    sex: { type: string, description: "An axis to filter or group on, never sum across: one value per row. 'F' women or 'M' men — INSEE publishes no both-sexes figure here.", values: ["F", "M"] }
+    year: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Year, '1975'..'2025'." }
+    years: { type: number, unit: years, description: "Life expectancy at birth, in years." }
+    status: { type: string, description: "'A' final, 'R' revised, 'P' provisional (2023 onward).", values: ["A", "R", "P"] }

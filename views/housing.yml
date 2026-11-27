@@ -7,7 +7,7 @@
 # couple's household counts as 1.5 units).
 
 - name: FrHousingAffordability
-  description: "Property prices against local incomes for every French commune with enough sales: median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts, the median standard of living and poverty rate (Filosofi 2023), and years of the local median standard of living to buy a 70 m2 flat or a 100 m2 house. Communes need at least minSales flat OR house sales and a published income. Excludes Alsace-Moselle and Mayotte (not in DVF); Paris, Lyon and Marseille appear per arrondissement. A median over few sales is noisy, and a median below 300 EUR/m2 is treated as a data artefact (bulk or lot sales) and blanked. A yardstick of the gap between prices and incomes, not a mortgage calculation."
+  description: "Property prices against local incomes, every commune with enough sales. Property prices against local incomes for every French commune with enough sales: median price per m2 of flats and houses (DVF, last 10 half-years) with sale counts, the median standard of living and poverty rate (Filosofi 2023), and years of the local median standard of living to buy a 70 m2 flat or a 100 m2 house. Communes need at least minSales flat OR house sales and a published income. Excludes Alsace-Moselle and Mayotte (not in DVF); Paris, Lyon and Marseille appear per arrondissement. A median over few sales is noisy, and a median below 300 EUR/m2 is treated as a data artefact (bulk or lot sales) and blanked. A yardstick of the gap between prices and incomes, not a mortgage calculation."
   params:
     minSales: { type: int, default: 30, description: "Minimum flat or house sales over the period." }
   cypher: |
@@ -43,7 +43,7 @@
     ORDER BY coalesce(yearsFlat70m2, yearsHouse100m2 * 0.7) DESC
 
 - name: FrDeptHousing
-  description: "Every departement's property prices against its incomes: median price per m2 of flats and houses (DVF) with sales, median standard of living, poverty rate and inequality (Gini, Filosofi 2023), and years of the median standard of living for a 70 m2 flat and a 100 m2 house. Alsace-Moselle (57, 67, 68) appear with incomes but no prices (not in DVF), sorted last; Mayotte is absent."
+  description: "Every departement's property prices against its incomes. Median price per m2 of flats and houses (DVF) with sales, median standard of living, poverty rate and inequality (Gini, Filosofi 2023), and years of the median standard of living for a 70 m2 flat and a 100 m2 house. Alsace-Moselle (57, 67, 68) appear with incomes but no prices (not in DVF), sorted last; Mayotte is absent."
   cypher: |
     MATCH (s:FrHousingScale {scale:'departement'})-[:LISTS_HOUSING]->(h:FrHousing)
     WITH collect({code: h.code, name: h.name, flat: h.aptMedianM2, flatN: h.aptSales, house: h.houseMedianM2, houseN: h.houseSales}) AS hs

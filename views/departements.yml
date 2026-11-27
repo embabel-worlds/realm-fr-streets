@@ -44,7 +44,7 @@
     ORDER BY year
 
 - name: FrDepartementLeague
-  description: "Departements ranked by a recorded-crime rate for one SSMSI indicator and year — every departement, nothing suppressed, homicides included — with name, rate and count. The complete league the commune base cannot give."
+  description: "Departements ranked by a recorded-crime rate for one SSMSI indicator and year. Every departement, nothing suppressed, homicides included — with name, rate and count. The complete league the commune base cannot give."
   params:
     indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -81,7 +81,7 @@
     ORDER BY ratePer1000 DESC LIMIT $limit
 
 - name: FrDepartementRows
-  description: "The departement crime model's design matrix: one row per departement with the recorded-crime rate and every predictor — median standard of living (EUR/yr), poverty rate (%), Gini index, interdecile ratio D9/D1, density (inhabitants/km2), 15-24 share (%), immigrant share (%) and population. Exactly what FrDepartementModel fits, for a reader to check or a client to refit. Metropolitan France and La Reunion (Filosofi's coverage)."
+  description: "The departement crime model's design matrix. One row per departement with the recorded-crime rate and every predictor — median standard of living (EUR/yr), poverty rate (%), Gini index, interdecile ratio D9/D1, density (inhabitants/km2), 15-24 share (%), immigrant share (%) and population. Exactly what FrDepartementModel fits, for a reader to check or a client to refit. Metropolitan France and La Reunion (Filosofi's coverage). One row per departement only; it states no model result (see FrDepartementModel)."
   params:
     indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -151,7 +151,7 @@
     ORDER BY ratePer1000 DESC
 
 - name: FrDepartementPredictorsOneByOne
-  description: "Each candidate predictor of a departement's recorded-crime rate measured ALONE — median income, poverty, inequality (Gini), log density, the 15-24 share and the immigrant share — with a confidence interval and whether it is detectable. Read beside FrDepartementModel: a variable strong alone and weak there had its apparent effect belonging to the variables it travels with. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
+  description: "Each candidate predictor of a departement's recorded-crime rate measured ALONE. Median income, poverty, inequality (Gini), log density, the 15-24 share and the immigrant share — with a confidence interval and whether it is detectable. Read beside FrDepartementModel: a variable strong alone and weak there had its apparent effect belonging to the variables it travels with. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
   params:
     indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
     year: { type: int, default: 2025, description: "2016-2025." }
@@ -227,7 +227,7 @@
 # Predictors come back as x1..xn in this FIXED order, switched-off ones dropped:
 # income, poverty, inequality, density (log), youngAdults, immigrants.
 - name: FrDepartementModel
-  description: "What best predicts a departement's recorded-crime rate — a least-squares fit across EVERY departement (no suppression, so no small-commune bias) on whichever predictors are switched on: median standard of living, poverty rate, INEQUALITY (Gini — published for departements only), log density, the 15-24 share and the IMMIGRANT share. Standardized betas, R², and the departements furthest above and below prediction by name. Predictors return as x1..xn in the fixed order income, poverty, inequality, density, youngAdults, immigrants, switched-off ones dropped. For violent theft, drug trafficking, physical violence and attempted homicide (2025) inequality carries the largest beta and the immigrant share's solo correlation mostly does not survive beside it. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
+  description: "What best predicts a departement's recorded-crime rate. A least-squares fit across EVERY departement (no suppression, so no small-commune bias) on whichever predictors are switched on: median standard of living, poverty rate, INEQUALITY (Gini — published for departements only), log density, the 15-24 share and the IMMIGRANT share. Standardized betas, R², and the departements furthest above and below prediction by name. Predictors return as x1..xn in the fixed order income, poverty, inequality, density, youngAdults, immigrants, switched-off ones dropped. For violent theft, drug trafficking, physical violence and attempted homicide (2025) inequality carries the largest beta and the immigrant share's solo correlation mostly does not survive beside it. Association across departements, never causation and never a statement about any person or group. With ~96 departements and predictors this correlated (income, poverty and inequality move together), individual betas carry wide uncertainty — read the pattern, not the second decimal. Recorded crime also measures reporting and police activity."
   params:
     indicator: { type: string, default: "Vols violents sans arme", description: "SSMSI indicator label, verbatim — the 15 commune labels plus 'Homicides', 'Tentatives d'homicide' and 'Usage de stupéfiants (hors AFD)'." }
     year: { type: int, default: 2025, description: "2016-2025." }

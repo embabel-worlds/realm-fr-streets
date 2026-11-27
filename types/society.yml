@@ -1,6 +1,6 @@
 # ── Work and qualifications (census 2023) ───────────────────────────────────
 - name: FrWork
-  description: "Census 2023 labour-market status of a commune's residents aged 15+: status '1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2') — SELF-DECLARED on the census form, so higher than France Travail registrations or the quarterly ILO survey; compare communes with communes. Per place via (p:FrPlace)-[:HAS_WORK]->(w), any commune via (m:FrMelodiPlace {geo:'2025-COM-<code>'})-[:HAS_WORK]->(w); nationally HAS_UNEMPLOYED (status 2) and HAS_LABOUR_FORCE (status 1T2) from FrCommunes {set:'france'}, joined on code."
+  description: "One row per commune and status, identified by `id` = `<geo>:<status>`. Census 2023 labour-market status of a commune's residents aged 15+: status '1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2') — SELF-DECLARED on the census form, so higher than France Travail registrations or the quarterly ILO survey; compare communes with communes. Per place via (p:FrPlace)-[:HAS_WORK]->(w), any commune via (m:FrMelodiPlace {geo:'2025-COM-<code>'})-[:HAS_WORK]->(w); nationally HAS_UNEMPLOYED (status 2) and HAS_LABOUR_FORCE (status 1T2) from FrCommunes {set:'france'}, joined on code."
   virtualJoins:
     - anchorLabel: FrPlace
       relationship: HAS_WORK
@@ -22,25 +22,25 @@
       recordKeyField: key
       producer: frUnemployedAll
       maxAnchors: 1
-      description: "Unemployed residents 15+ in every commune, one call, a week of cache."
+      description: "Unemployed residents 15+ in every commune, one call, a week of cache. Every row it returns is status '2' (unemployed): INSEE is asked for that slice only."
     - anchorLabel: FrCommunes
       relationship: HAS_LABOUR_FORCE
       keyField: set
       recordKeyField: key
       producer: frLabourForceAll
       maxAnchors: 1
-      description: "Labour force 15+ in every commune, one call, a week of cache."
+      description: "Labour force 15+ in every commune, one call, a week of cache. Every row it returns is status '1T2' (the labour force): INSEE is asked for that slice only."
   properties:
     id: { type: string, description: "geo:status. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    status: { type: string, description: "'1' employed, '2' unemployed, '1T2' labour force." }
-    persons: { type: number, description: "Persons (census estimate, fractional)." }
+    status: { type: string, description: "An axis to filter or group on, never sum across: one value per row. '1' employed, '2' unemployed, '1T2' labour force. Census unemployment rate = persons('2') / persons('1T2').", values: ["1", "2", "1T2"] }
+    persons: { type: number, unit: persons, description: "Persons (census estimate, fractional)." }
     year: { type: string, description: "Census year (2023)." }
 
 - name: FrEducation
-  description: "Census highest qualification of a commune's NON-STUDENT residents aged 15+, by level: '001T100_RP' no qualification or primary certificate only, '200_RP' brevet, '300_RP' CAP/BEP, '350T351_RP' baccalaureat, '500T702_RP' any higher-education degree, '700_RP' bac+5 or more, '_T' total. Share = persons(level) / persons('_T'). Per place via (p:FrPlace)-[:HAS_EDUCATION]->(e) (censuses 2012, 2017, 2023), any commune via FrMelodiPlace; nationally (2023) HAS_NO_DIPLOMA, HAS_GRADUATES and HAS_EDUCATION_BASE from FrCommunes {set:'france'}."
+  description: "One row per commune and qualification level, identified by `id` = `<geo>:<level>:<year>`. Census highest qualification of a commune's NON-STUDENT residents aged 15+, by level: '001T100_RP' no qualification or primary certificate only, '200_RP' brevet, '300_RP' CAP/BEP, '350T351_RP' baccalaureat, '500T702_RP' any higher-education degree, '700_RP' bac+5 or more, '_T' total. Share = persons(level) / persons('_T'). Per place via (p:FrPlace)-[:HAS_EDUCATION]->(e) (censuses 2012, 2017, 2023), any commune via FrMelodiPlace; nationally (2023) HAS_NO_DIPLOMA, HAS_GRADUATES and HAS_EDUCATION_BASE from FrCommunes {set:'france'}."
   virtualJoins:
     - anchorLabel: FrPlace
       relationship: HAS_EDUCATION
@@ -62,33 +62,33 @@
       recordKeyField: key
       producer: frNoDiplomaAll
       maxAnchors: 1
-      description: "Residents with no qualification, every commune, 2023."
+      description: "Residents with no qualification, every commune, 2023. Every row it returns is level '001T100_RP' (no qualification or primary certificate only) for census year '2023': INSEE is asked for that slice only."
     - anchorLabel: FrCommunes
       relationship: HAS_GRADUATES
       keyField: set
       recordKeyField: key
       producer: frGraduatesAll
       maxAnchors: 1
-      description: "Residents with a higher-education degree, every commune, 2023."
+      description: "Residents with a higher-education degree, every commune, 2023. Every row it returns is level '500T702_RP' (higher education) for census year '2023': INSEE is asked for that slice only."
     - anchorLabel: FrCommunes
       relationship: HAS_EDUCATION_BASE
       keyField: set
       recordKeyField: key
       producer: frDiplomaBaseAll
       maxAnchors: 1
-      description: "Non-student population 15+ (the denominator), every commune, 2023."
+      description: "Non-student population 15+ (the denominator), every commune, 2023. Every row it returns is level '_T' (all non-students aged 15+) for census year '2023': INSEE is asked for that slice only."
   properties:
     id: { type: string, description: "geo:level:year. Identity.", metadata: { identity: "true" } }
     key: "The anchor key."
     geo: { type: string, description: "Melodi GEO." }
     code: { type: string, description: "INSEE code parsed from geo." }
-    level: { type: string, description: "INSEE EDUC code (see description)." }
-    persons: { type: number, description: "Persons." }
-    year: { type: string, description: "Census year: 2012, 2017 or 2023." }
+    level: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Highest qualification (INSEE EDUC): _T all non-students 15+, 001T100_RP no qualification or primary certificate only, 200_RP brevet, 300_RP CAP/BEP, 350T351_RP baccalaureat, 500_RP short higher education (bac+2), 500T702_RP any higher-education degree, 600_RP bac+3/4, 600T702_RP university 2nd/3rd cycle, 700_RP bac+5 or more. Share of a level = persons(level) / persons('_T').", values: ["_T", "001T100_RP", "200_RP", "300_RP", "350T351_RP", "500_RP", "500T702_RP", "600_RP", "600T702_RP", "700_RP"] }
+    persons: { type: number, unit: persons, description: "Number of persons in this row's slice (census estimate, can be fractional)." }
+    year: { type: string, description: "An axis to filter or group on, never sum across: one value per row. Census year: 2012, 2017 or 2023." }
 
 # ── European elections 2024 ──────────────────────────────────────────────────
 - name: FrEuroVote
-  description: "Official result of the European Parliament election of 9 June 2024 in one commune (Ministere de l'Interieur, final results): registered voters, voters, abstentions, valid votes cast ('expressed'), blank and spoilt ballots, and the votes for EVERY one of the 38 lists as v1..v38 — vN is the list with panel number N, the SAME list in every commune of France. A list's share = vN / expressed. The largest panels, by the ministry's own list title and nuance code (national share): 5 LRN 'La France revient ! avec Jordan Bardella et Marine Le Pen' (31.37%), 11 LENS 'Besoin d'Europe' (14.60%), 27 LUG 'Reveiller l'Europe' (13.83%), 4 LFI 'La France insoumise - Union populaire' (9.89%), 18 LLR 'La droite pour faire entendre la voix de la France en Europe' (7.25%), 6 LVEC 'Europe Ecologie' (5.50%), 3 LREC 'La France fiere, menee par Marion Marechal et soutenue par Eric Zemmour' (5.47%), 33 LCOM 'Gauche unie pour le monde du travail soutenue par Fabien Roussel' (2.36%), 29 LDVD 'Alliance rurale' (2.35%), 8 LDIV 'Parti animaliste' (2.00%); the other 28 lists are all present too. The realm never groups lists into blocs or applies labels of its own: which lists to sum is the caller's choice. Via (c:FrCommune {code})-[:HAS_EURO24]->(v), (p:FrPlace)-[:HAS_EURO24]->(v), or every commune at once via (u:FrCommunes {set:'france'})-[:HAS_EURO24]->(v) (one 46 MB file, cached a week). Paris, Lyon and Marseille are single rows (the city), not arrondissements."
+  description: "One commune's result, identified by its row `id`. Official result of the European Parliament election of 9 June 2024 in one commune (Ministere de l'Interieur, final results): registered voters, voters, abstentions, valid votes cast ('expressed'), blank and spoilt ballots, and the votes for EVERY one of the 38 lists as v1..v38 — vN is the list with panel number N, the SAME list in every commune of France. A list's share = vN / expressed. The largest panels, by the ministry's own list title and nuance code (national share): 5 LRN 'La France revient ! avec Jordan Bardella et Marine Le Pen' (31.37%), 11 LENS 'Besoin d'Europe' (14.60%), 27 LUG 'Reveiller l'Europe' (13.83%), 4 LFI 'La France insoumise - Union populaire' (9.89%), 18 LLR 'La droite pour faire entendre la voix de la France en Europe' (7.25%), 6 LVEC 'Europe Ecologie' (5.50%), 3 LREC 'La France fiere, menee par Marion Marechal et soutenue par Eric Zemmour' (5.47%), 33 LCOM 'Gauche unie pour le monde du travail soutenue par Fabien Roussel' (2.36%), 29 LDVD 'Alliance rurale' (2.35%), 8 LDIV 'Parti animaliste' (2.00%); the other 28 lists are all present too. The realm never groups lists into blocs or applies labels of its own: which lists to sum is the caller's choice. Via (c:FrCommune {code})-[:HAS_EURO24]->(v), (p:FrPlace)-[:HAS_EURO24]->(v), or every commune at once via (u:FrCommunes {set:'france'})-[:HAS_EURO24]->(v) (one 46 MB file, cached a week). Paris, Lyon and Marseille are single rows (the city), not arrondissements."
   virtualJoins:
     - anchorLabel: FrCommune
       relationship: HAS_EURO24
@@ -96,7 +96,7 @@
       recordKeyField: code
       producer: frEuro24ByCode
       maxAnchors: 50
-      description: "The commune's row."
+      description: "The commune's official result in the European election of 9 June 2024, one row per commune, read from the ministry's results file by commune code."
     - anchorLabel: FrPlace
       relationship: HAS_EURO24
       keyField: inseeCode
@@ -110,7 +110,7 @@
       recordKeyField: key
       producer: frEuro24All
       maxAnchors: 1
-      description: "Every commune's row, one cached file."
+      description: "The commune's official result in the European election of 9 June 2024, one row per commune, read from the ministry's results file by commune code."
   properties:
     id: { type: string, description: "Row id. Identity.", metadata: { identity: "true" } }
     key: "The anchor key on the national door."
@@ -119,7 +119,7 @@
     departement: { type: string, description: "Departement code ('ZZ' = French voters abroad)." }
     registered: { type: number, description: "Registered voters (inscrits)." }
     voters: { type: number, description: "Voters (votants)." }
-    abstentions: { type: number, description: "Abstentions." }
+    abstentions: { type: number, description: "Registered voters who did not vote, a count." }
     expressed: { type: number, description: "Valid votes cast (exprimes) — the denominator for a list's share." }
     blank: { type: number, description: "Blank ballots." }
     spoilt: { type: number, description: "Spoilt ballots (nuls)." }

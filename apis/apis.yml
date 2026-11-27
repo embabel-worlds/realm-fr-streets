@@ -17,6 +17,7 @@
     - frPopulationAge
     - frActivity
     - frDiplomas
+    - frMortality
 - url: geo-api.json
   name: fr_geo
   type: openapi

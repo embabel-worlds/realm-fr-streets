@@ -22,6 +22,8 @@
     profession: "['Libellé de la catégorie socio-professionnelle']"
     mandateStart: "['Date de début du mandat']"
     functionStart: "['Date de début de la fonction']"
+  # One row per commune code, a batch of codes per call: nothing left to filter at the source.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
 
 - name: frDeputiesByDepartement
@@ -43,4 +45,6 @@
     sex: "['Code sexe']"
     profession: "['Libellé de la catégorie socio-professionnelle']"
     mandateStart: "['Date de début du mandat']"
+  # Every deputy of a departement, a handful: the file is filtered by departement only.
+  pushdown: []
   cache: {kind: ttl, seconds: 604800, negativeTtlSeconds: 3600}
